@@ -1,0 +1,487 @@
+const express = require('express');
+const { body, validationResult } = require('express-validator');
+const db = require('../config/database');
+const { authenticateToken, checkBalance } = require('../middleware/auth');
+const QRCode = require('qrcode');
+const { v4: uuidv4 } = require('uuid');
+
+const router = express.Router();
+
+// Validation rules
+const startParkingValidation = [
+  body('vehicleId').isInt().withMessage('Valid vehicle ID is required'),
+  body('locationId').isInt().withMessage('Valid location ID is required')
+];
+
+// Get all parking locations
+router.get('/locations', async (req, res) => {
+  try {
+    const { lat, lng, radius = 5 } = req.query;
+
+    let query = `
+      SELECT 
+        pa.parking_area_id as id, 
+        pa.parking_area_name as name, 
+        pa.location as address, 
+        NULL as latitude, 
+        NULL as longitude, 
+        COUNT(ps.parking_spot_id) as total_spots, 
+        COUNT(CASE WHEN ps.status = 'free' THEN 1 END) as available_spots, 
+        50.00 as hourly_rate, 
+        500.00 as daily_rate, 
+        '24/7' as operating_hours, 
+        'Basic parking' as amenities, 
+        pa.status as is_active
+      FROM parking_area pa
+      LEFT JOIN parking_section psec ON pa.parking_area_id = psec.parking_area_id
+      LEFT JOIN parking_spot ps ON psec.parking_section_id = ps.parking_section_id
+      WHERE pa.status = 'active'
+      GROUP BY pa.parking_area_id, pa.parking_area_name, pa.location, pa.status
+    `;
+
+    const params = [];
+
+    // Order by name
+    query += ' ORDER BY pa.parking_area_name';
+
+    const locations = await db.query(query, params);
+
+    // Parse JSON fields
+    const processedLocations = locations.map(location => ({
+      ...location,
+      operating_hours: location.operating_hours || '24/7',
+      amenities: location.amenities || 'Basic parking'
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        locations: processedLocations
+      }
+    });
+
+  } catch (error) {
+    console.error('Get parking locations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch parking locations'
+    });
+  }
+});
+
+// Get specific parking location
+router.get('/locations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const locations = await db.query(`
+      SELECT 
+        pa.parking_area_id as id, 
+        pa.parking_area_name as name, 
+        pa.location as address, 
+        NULL as latitude, 
+        NULL as longitude, 
+        COUNT(ps.parking_spot_id) as total_spots, 
+        COUNT(CASE WHEN ps.status = 'free' THEN 1 END) as available_spots, 
+        50.00 as hourly_rate, 
+        500.00 as daily_rate, 
+        '24/7' as operating_hours, 
+        'Basic parking' as amenities, 
+        pa.status as is_active
+      FROM parking_area pa
+      LEFT JOIN parking_section psec ON pa.parking_area_id = psec.parking_area_id
+      LEFT JOIN parking_spot ps ON psec.parking_section_id = ps.parking_section_id
+      WHERE pa.parking_area_id = ? AND pa.status = 'active'
+      GROUP BY pa.parking_area_id, pa.parking_area_name, pa.location, pa.status
+    `, [id]);
+
+    if (locations.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parking location not found'
+      });
+    }
+
+    const location = locations[0];
+    location.operating_hours = location.operating_hours || '24/7';
+    location.amenities = location.amenities || 'Basic parking';
+
+    res.json({
+      success: true,
+      data: {
+        location
+      }
+    });
+
+  } catch (error) {
+    console.error('Get parking location error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch parking location'
+    });
+  }
+});
+
+// Start parking session
+router.post('/start', authenticateToken, startParkingValidation, checkBalance(50), async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { vehicleId, locationId } = req.body;
+
+    // Verify vehicle belongs to user
+    const vehicle = await db.query(
+      'SELECT id FROM vehicles WHERE id = ? AND user_id = ?',
+      [vehicleId, req.user.user_id]
+    );
+
+    if (vehicle.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vehicle not found'
+      });
+    }
+
+    // Verify location exists and has available spots
+    const location = await db.query(`
+      SELECT 
+        pa.parking_area_id as id, 
+        COUNT(CASE WHEN ps.status = 'free' THEN 1 END) as available_spots, 
+        50.00 as hourly_rate 
+      FROM parking_area pa
+      LEFT JOIN parking_section psec ON pa.parking_area_id = psec.parking_area_id
+      LEFT JOIN parking_spot ps ON psec.parking_section_id = ps.parking_section_id
+      WHERE pa.parking_area_id = ? AND pa.status = 'active'
+      GROUP BY pa.parking_area_id
+    `, [locationId]);
+
+    if (location.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Parking location not found'
+      });
+    }
+
+    if (location[0].available_spots <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No available parking spots'
+      });
+    }
+
+    // Check if user has active parking session
+    const activeSession = await db.query(
+      'SELECT reservation_id as id FROM reservations WHERE user_id = ? AND booking_status = "active"',
+      [req.user.user_id]
+    );
+
+    if (activeSession.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have an active parking session'
+      });
+    }
+
+    // Generate QR code
+    const qrCodeData = uuidv4();
+    const qrCodeImage = await QRCode.toDataURL(qrCodeData, {
+      width: parseInt(process.env.QR_CODE_SIZE) || 200,
+      margin: parseInt(process.env.QR_CODE_MARGIN) || 2
+    });
+
+    // Start transaction
+    const results = await db.transaction([
+      {
+        sql: `
+          INSERT INTO parking_sessions 
+          (user_id, vehicle_id, location_id, qr_code, start_time, hourly_rate, status)
+          VALUES (?, ?, ?, ?, NOW(), ?, 'active')
+        `,
+        params: [req.user.user_id, vehicleId, locationId, qrCodeData, location[0].hourly_rate]
+      },
+      {
+        sql: `
+          UPDATE parking_spot ps
+          JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+          JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+          SET ps.status = 'occupied'
+          WHERE pa.parking_area_id = ? AND ps.status = 'free'
+          LIMIT 1
+        `,
+        params: [locationId]
+      }
+    ]);
+
+    const sessionId = results[0].insertId;
+
+    res.status(201).json({
+      success: true,
+      message: 'Parking session started successfully',
+      data: {
+        session: {
+          id: sessionId,
+          qrCode: qrCodeData,
+          qrCodeImage,
+          startTime: new Date().toISOString(),
+          hourlyRate: location[0].hourly_rate
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Start parking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to start parking session'
+    });
+  }
+});
+
+// End parking session
+router.post('/end/:sessionId', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    // Get parking session
+    const sessions = await db.query(`
+      SELECT 
+        r.reservation_id as id,
+        r.user_id,
+        r.vehicle_id,
+        r.parking_spots_id as location_id,
+        r.start_time,
+        r.end_time,
+        r.booking_status as status,
+        pa.parking_area_name as location_name,
+        50.00 as hourly_rate
+      FROM reservations r
+      JOIN parking_spot ps ON r.parking_spots_id = ps.parking_spot_id
+      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+      JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      WHERE r.reservation_id = ? AND r.user_id = ? AND r.booking_status = 'active'
+    `, [sessionId, req.user.user_id]);
+
+    if (sessions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Active parking session not found'
+      });
+    }
+
+    const session = sessions[0];
+    const endTime = new Date();
+    const startTime = new Date(session.start_time);
+    const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
+    const durationHours = Math.ceil(durationMinutes / 60);
+    const totalCost = durationHours * session.hourly_rate;
+
+    // Check user's subscription hours - this is the ONLY payment method
+    const subscriptionHours = await db.query(`
+      SELECT 
+        s.subscription_id,
+        s.hours_remaining,
+        s.hours_used,
+        p.plan_name
+      FROM subscriptions s
+      JOIN plans p ON s.plan_id = p.plan_id
+      WHERE s.user_id = ? AND s.status = 'active' AND s.hours_remaining > 0
+      ORDER BY s.purchase_date ASC
+      LIMIT 1
+    `, [req.user.user_id]);
+
+    // Check if user has sufficient subscription hours
+    if (subscriptionHours.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active subscription hours available. Please purchase a subscription plan first.'
+      });
+    }
+
+    if (subscriptionHours[0].hours_remaining < durationHours) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient subscription hours. Required: ${durationHours} hours, Available: ${subscriptionHours[0].hours_remaining} hours`
+      });
+    }
+
+    // Use subscription hours
+    const paymentMethod = 'subscription';
+    const subscriptionId = subscriptionHours[0].subscription_id;
+    const hoursToDeduct = durationHours;
+
+    // Process payment using subscription hours only
+    const results = await db.transaction([
+      {
+        sql: `
+          UPDATE reservations 
+          SET end_time = NOW(), booking_status = 'completed'
+          WHERE reservation_id = ?
+        `,
+        params: [sessionId]
+      },
+      {
+        sql: `
+          UPDATE subscriptions 
+          SET hours_remaining = hours_remaining - ?, hours_used = hours_used + ?
+          WHERE subscription_id = ?
+        `,
+        params: [hoursToDeduct, hoursToDeduct, subscriptionId]
+      },
+      {
+        sql: `
+          UPDATE parking_spot ps
+          JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+          JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+          SET ps.status = 'free'
+          WHERE pa.parking_area_id = ? AND ps.status = 'occupied'
+          LIMIT 1
+        `,
+        params: [session.location_id]
+      },
+      {
+        sql: `
+          INSERT INTO payments (amount, status, payment_date, payment_method_id, subscription_id)
+          VALUES (?, 'paid', NOW(), 1, ?)
+        `,
+        params: [totalCost, subscriptionId]
+      }
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Parking session ended successfully',
+      data: {
+        session: {
+          id: sessionId,
+          durationMinutes,
+          durationHours,
+          totalCost,
+          endTime: endTime.toISOString(),
+          paymentMethod,
+          hoursDeducted: hoursToDeduct,
+          subscriptionId: subscriptionId
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('End parking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to end parking session'
+    });
+  }
+});
+
+// Get active parking session
+router.get('/active', authenticateToken, async (req, res) => {
+  try {
+    const sessions = await db.query(`
+      SELECT 
+        r.reservation_id as id,
+        r.user_id,
+        r.vehicle_id,
+        r.parking_spots_id as location_id,
+        r.start_time,
+        r.end_time,
+        r.booking_status as status,
+        v.plate_number, 
+        v.vehicle_type, 
+        pa.parking_area_name as location_name, 
+        pa.location as address
+      FROM reservations r
+      JOIN vehicles v ON r.vehicle_id = v.vehicle_id
+      JOIN parking_spot ps ON r.parking_spots_id = ps.parking_spot_id
+      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+      JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      WHERE r.user_id = ? AND r.booking_status = 'active'
+      ORDER BY r.start_time DESC
+      LIMIT 1
+    `, [req.user.user_id]);
+
+    if (sessions.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          session: null
+        }
+      });
+    }
+
+    const session = sessions[0];
+    const currentTime = new Date();
+    const startTime = new Date(session.start_time);
+    const durationMinutes = Math.floor((currentTime - startTime) / (1000 * 60));
+    const currentCost = Math.ceil(durationMinutes / 60) * session.hourly_rate;
+
+    res.json({
+      success: true,
+      data: {
+        session: {
+          ...session,
+          durationMinutes,
+          currentCost
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get active session error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch active session'
+    });
+  }
+});
+
+// Get parking history
+router.get('/history', authenticateToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const sessions = await db.query(`
+      SELECT ps.*, v.plate_number, v.vehicle_type, pl.name as location_name, pl.address
+      FROM parking_sessions ps
+      JOIN vehicles v ON ps.vehicle_id = v.id
+      JOIN parking_locations pl ON ps.location_id = pl.id
+      WHERE ps.user_id = ?
+      ORDER BY ps.start_time DESC
+      LIMIT ? OFFSET ?
+    `, [req.user.user_id, parseInt(limit), parseInt(offset)]);
+
+    const totalCount = await db.query(
+      'SELECT COUNT(*) as count FROM parking_sessions WHERE user_id = ?',
+      [req.user.user_id]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        sessions,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalCount[0].count / limit),
+          totalItems: totalCount[0].count,
+          itemsPerPage: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get parking history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch parking history'
+    });
+  }
+});
+
+module.exports = router;
