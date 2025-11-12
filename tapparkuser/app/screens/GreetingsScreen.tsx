@@ -121,7 +121,7 @@ export default function GreetingsScreen() {
           {/* Middle Section - Text */}
           <View style={styles.middleSection}>
             <ThemedText style={styles.welcomeText}>
-              Experience a stress free{'\n'}parking with us! 🚗
+              Experience a {'\n'}stress free parking {'\n'}with us! 🚗
             </ThemedText>
           </View>
 
@@ -132,7 +132,7 @@ export default function GreetingsScreen() {
                 onPress={handleSignIn}
                 style={styles.signInButton}
               >
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Text style={styles.signInButtonText}>Sign Up</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

@@ -58,6 +58,7 @@ export const signupStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: getResponsivePadding(24),
     paddingTop: getResponsivePadding(40),
+    
     maxWidth: isTablet || isLargeTablet ? getResponsiveSize(500) : '100%',
     alignSelf: 'center',
     width: '100%',
@@ -99,6 +100,8 @@ export const signupStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: getResponsiveSize(8),
+    marginTop: getResponsiveMargin(10),
+
   },
   parkWithEaseText: {
     fontSize: getResponsiveFontSize(18),
@@ -118,14 +121,14 @@ export const signupStyles = StyleSheet.create({
   inputSection: {
     flex: 0.38,
     justifyContent: 'center',
-    paddingHorizontal: getResponsivePadding(20),
-    paddingTop: getResponsivePadding(20),
-    marginTop: getResponsiveMargin(10),
+    paddingHorizontal: getResponsivePadding(5),
+    //paddingTop: getResponsivePadding(10),
+    //marginTop: getResponsiveMargin(5),
   },
   inputField: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#800000',
+    borderColor: '#DCDFE6',
     borderRadius: getResponsiveSize(8),
     paddingHorizontal: getResponsivePadding(14),
     paddingVertical: getResponsivePadding(12),
@@ -137,7 +140,7 @@ export const signupStyles = StyleSheet.create({
   emailField: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#800000',
+    borderColor: '#DCDFE6',
     borderRadius: getResponsiveSize(8),
     paddingHorizontal: getResponsivePadding(14),
     paddingVertical: getResponsivePadding(12),
@@ -150,8 +153,8 @@ export const signupStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: getResponsivePadding(20),
-    paddingTop: getResponsivePadding(20),
-    marginTop: getResponsiveMargin(10),
+    //paddingTop: getResponsivePadding(10),
+    //marginTop: getResponsiveMargin(5),
   },
   buttonContainer: {
     flexDirection: 'row',

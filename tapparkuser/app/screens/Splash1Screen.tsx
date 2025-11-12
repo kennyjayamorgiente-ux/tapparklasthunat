@@ -190,7 +190,7 @@ export default function Splash1Screen() {
 
   const logoMoveInterpolate = logoMoveAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -getResponsiveSize(80)], // Move logo to the left (responsive)
+    outputRange: [0, -getResponsiveSize(10)], // Move logo to the left (responsive)
   });
 
   return (
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   textContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: getResponsiveSize(200), // Ensure text has enough space
+    minWidth: getResponsiveSize(150), // Ensure text has enough space
   },
   appName: {
     fontSize: getResponsiveFontSize(48),

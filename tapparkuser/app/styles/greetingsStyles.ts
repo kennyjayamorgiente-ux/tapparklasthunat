@@ -54,7 +54,7 @@ export const greetingsStyles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
+    flex: 1.5,
     justifyContent: 'space-between',
     paddingHorizontal: getResponsivePadding(24),
     maxWidth: isTablet || isLargeTablet ? getResponsiveSize(600) : '100%',
@@ -79,8 +79,8 @@ export const greetingsStyles = StyleSheet.create({
     alignItems: 'center',
   },
   carImage: {
-    width: getResponsiveSize(280),
-    height: getResponsiveSize(168),
+    width: getResponsiveSize(290),
+    height: getResponsiveSize(178),
     maxWidth: isTablet || isLargeTablet ? getResponsiveSize(400) : getResponsiveSize(280),
     maxHeight: isTablet || isLargeTablet ? getResponsiveSize(240) : getResponsiveSize(168),
   },
@@ -88,9 +88,9 @@ export const greetingsStyles = StyleSheet.create({
     flex: 0.4,
     justifyContent: 'center',
     alignItems: isTablet || isLargeTablet ? 'center' : 'flex-start',
-    paddingTop: getResponsivePadding(20),
-    paddingLeft: getResponsivePadding(20),
-    paddingRight: getResponsivePadding(20),
+    //paddingTop: getResponsivePadding(10),
+    paddingLeft: getResponsivePadding(10),
+    paddingRight: getResponsivePadding(10),
   },
   welcomeText: {
     fontSize: getResponsiveFontSize(40),
@@ -98,7 +98,7 @@ export const greetingsStyles = StyleSheet.create({
     color: '#2C2C4A',
     textAlign: isTablet || isLargeTablet ? 'center' : 'left',
     lineHeight: getResponsiveFontSize(48),
-    paddingLeft: getResponsivePadding(20),
+    //paddingLeft: getResponsivePadding(5),
     flexWrap: 'wrap',
     maxWidth: '100%',
   },
@@ -108,6 +108,10 @@ export const greetingsStyles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: getResponsivePadding(40),
     marginBottom: getResponsivePadding(20),
+    paddingLeft: getResponsivePadding(10),
+    paddingRight: getResponsivePadding(10),
+
+
   },
   buttonContainer: {
     flexDirection: 'row',

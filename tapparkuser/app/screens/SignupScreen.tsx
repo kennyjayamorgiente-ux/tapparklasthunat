@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Animated,
@@ -66,6 +66,13 @@ export default function SignupScreen() {
   const router = useRouter();
   const pulseAnim = new Animated.Value(1);
   const scrollViewRef = React.useRef<ScrollView>(null);
+
+  // 🔑 1. Create Refs for all Text Inputs
+  const schoolIdRef = useRef(null);
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
   
   // State for form inputs
   const [schoolId, setSchoolId] = useState('');
@@ -189,10 +196,11 @@ export default function SignupScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-            enabled
-          >
+    behavior={Platform.OS === 'ios' ? 'position' : undefined} // <-- Changed to 'position'
+    style={{ flex: 1 }}
+    enabled
+    keyboardVerticalOffset={Platform.OS === 'ios' ? -80 : 0} // <-- Use a negative offset
+>
             <ScrollView
               ref={scrollViewRef}
               contentContainerStyle={styles.content}
@@ -238,9 +246,10 @@ export default function SignupScreen() {
                 </Text>
               </View>
 
-              {/* Input Fields */}
+              {/* Input Fields - The changes are here! */}
               <View style={styles.inputSection}>
                 <TextInput
+                  ref={schoolIdRef} // <-- Assign Ref
                   style={styles.inputField}
                   placeholder="School ID:"
                   placeholderTextColor="#9CA3AF"
@@ -248,8 +257,11 @@ export default function SignupScreen() {
                   onChangeText={setSchoolId}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="next" // <-- Set Next
+                  onSubmitEditing={() => firstNameRef.current.focus()} // <-- Focus next input
                 />
                 <TextInput
+                  ref={firstNameRef}
                   style={styles.inputField}
                   placeholder="First Name:"
                   placeholderTextColor="#9CA3AF"
@@ -257,8 +269,11 @@ export default function SignupScreen() {
                   onChangeText={setFirstName}
                   autoCapitalize="words"
                   autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => lastNameRef.current.focus()}
                 />
                 <TextInput
+                  ref={lastNameRef}
                   style={styles.inputField}
                   placeholder="Last Name:"
                   placeholderTextColor="#9CA3AF"
@@ -266,8 +281,11 @@ export default function SignupScreen() {
                   onChangeText={setLastName}
                   autoCapitalize="words"
                   autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailRef.current.focus()}
                 />
                 <TextInput
+                  ref={emailRef}
                   style={styles.inputField}
                   placeholder="Email:"
                   placeholderTextColor="#9CA3AF"
@@ -276,8 +294,11 @@ export default function SignupScreen() {
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current.focus()}
                 />
                 <TextInput
+                  ref={passwordRef} // <-- Last Input
                   style={styles.emailField}
                   placeholder="Password:"
                   placeholderTextColor="#9CA3AF"
@@ -286,6 +307,8 @@ export default function SignupScreen() {
                   onChangeText={setPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="done" // <-- Set Done
+                  onSubmitEditing={handleSignup} // <-- Call your signup function
                 />
               </View>
 
