@@ -1,7 +1,7 @@
 // Debug script to test backend connection
 const fetch = require('node-fetch');
 
-const API_BASE_URL = 'http://192.168.0.110:3000/api';
+const API_BASE_URL = 'http://192.168.1.22:3000/api';
 
 async function testConnection() {
   console.log('🔍 Testing backend connection...');
@@ -9,7 +9,7 @@ async function testConnection() {
   
   try {
     // Test basic connection
-    const response = await fetch(`http://192.168.0.110:3000/health`, {
+    const response = await fetch(`http://192.168.1.22:3000/health`, {
       method: 'GET',
       timeout: 5000
     });

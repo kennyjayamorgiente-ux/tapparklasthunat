@@ -4,11 +4,11 @@ import { Platform, NativeModules } from 'react-native';
 // API Configuration for Tapparkuser
 export const API_CONFIG = {
   // Your computer's IP address (from ipconfig)
-  COMPUTER_IP: '192.168.0.110',
+  COMPUTER_IP: '192.168.1.22',
   
   // API Base URLs
   LOCALHOST: 'http://localhost:3000/api',
-  NETWORK: 'http://192.168.0.110:3000/api',
+  NETWORK: 'http://192.168.1.22:3000/api',
   
   // Current environment
   // Change this to 'network' when testing on physical device

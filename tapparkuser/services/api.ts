@@ -610,7 +610,17 @@ export class ApiService {
     }>('/parking/locations');
   }
 
-  static async getParkingSpots(areaId: number) {
+  static async getParkingSpots(areaId: number, vehicleType?: string) {
+    const query = new URLSearchParams();
+    if (vehicleType) {
+      query.append('vehicleType', vehicleType);
+    }
+
+    const queryString = query.toString();
+    const url = queryString
+      ? `/parking-areas/areas/${areaId}/spots?${queryString}`
+      : `/parking-areas/areas/${areaId}/spots`;
+
     return this.request<{
       success: boolean;
       data: {
@@ -622,7 +632,7 @@ export class ApiService {
           section_name: string;
         }>;
       };
-    }>(`/parking-areas/areas/${areaId}/spots`);
+    }>(url);
   }
 
   static async bookParkingSpot(vehicleId: number, spotId: number, areaId: number) {
