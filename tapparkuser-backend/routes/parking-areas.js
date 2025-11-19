@@ -57,7 +57,7 @@ router.get('/areas/:areaId/spots', async (req, res) => {
         psec.section_name
       FROM parking_spot ps
       JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
-      WHERE psec.parking_area_id = ? AND ps.status = 'free'
+      WHERE psec.parking_area_id = ? AND ps.status = 'available'
     `;
 
     const params = [areaId];
@@ -138,7 +138,7 @@ router.post('/book', authenticateToken, async (req, res) => {
       });
     }
 
-    if (spots[0].status !== 'free') {
+    if (spots[0].status !== 'available') {
       return res.status(400).json({
         success: false,
         message: 'Parking spot is no longer available'
@@ -703,7 +703,7 @@ router.put('/end-session/:reservationId', authenticateToken, async (req, res) =>
       // Free the parking spot (set status to free)
       await db.query(`
         UPDATE parking_spot 
-        SET status = 'free'
+        SET status = 'available'
         WHERE parking_spot_id = ?
       `, [reservationData.parking_spots_id]);
 

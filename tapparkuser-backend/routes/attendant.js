@@ -14,7 +14,7 @@ router.get('/vehicle-types', authenticateToken, async (req, res) => {
         ps.spot_type as vehicle_type,
         COUNT(*) as total_capacity,
         SUM(CASE WHEN ps.status = 'occupied' THEN 1 ELSE 0 END) as occupied,
-        SUM(CASE WHEN ps.status = 'free' THEN 1 ELSE 0 END) as vacant,
+        SUM(CASE WHEN ps.status = 'available' THEN 1 ELSE 0 END) as vacant,
         SUM(CASE WHEN ps.status = 'reserved' THEN 1 ELSE 0 END) as reserved
       FROM parking_spot ps
       INNER JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
@@ -135,7 +135,7 @@ router.get('/dashboard-stats', authenticateToken, async (req, res) => {
       SELECT 
         COUNT(*) as total_spots,
         SUM(CASE WHEN ps.status = 'occupied' THEN 1 ELSE 0 END) as total_occupied,
-        SUM(CASE WHEN ps.status = 'free' THEN 1 ELSE 0 END) as total_vacant,
+        SUM(CASE WHEN ps.status = 'available' THEN 1 ELSE 0 END) as total_vacant,
         SUM(CASE WHEN ps.status = 'reserved' THEN 1 ELSE 0 END) as total_reserved
       FROM parking_spot ps
       INNER JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
@@ -516,7 +516,7 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
     // Free the parking spot
     await db.query(`
       UPDATE parking_spot 
-      SET status = 'free'
+      SET status = 'available'
       WHERE parking_spot_id = ?
     `, [reservationData.parking_spots_id]);
 

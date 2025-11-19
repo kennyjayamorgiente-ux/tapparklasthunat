@@ -26,7 +26,7 @@ router.get('/locations', async (req, res) => {
         NULL as latitude, 
         NULL as longitude, 
         COUNT(ps.parking_spot_id) as total_spots, 
-        COUNT(CASE WHEN ps.status = 'free' THEN 1 END) as available_spots, 
+        COUNT(CASE WHEN ps.status = 'available' THEN 1 END) as available_spots, 
         50.00 as hourly_rate, 
         500.00 as daily_rate, 
         '24/7' as operating_hours, 

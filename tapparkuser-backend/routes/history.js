@@ -338,7 +338,7 @@ router.get('/frequent-spots', authenticateToken, async (req, res) => {
         MAX(r.time_stamp) as last_used,
         ps.status as spot_status,
         CASE 
-          WHEN ps.status = 'free' THEN 'AVAILABLE'
+          WHEN ps.status = 'available' THEN 'AVAILABLE'
           WHEN ps.status = 'occupied' THEN 'OCCUPIED'
           ELSE 'UNKNOWN'
         END as status
