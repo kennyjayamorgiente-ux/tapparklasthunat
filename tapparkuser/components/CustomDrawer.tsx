@@ -147,15 +147,29 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const handleNavigation = React.useCallback((route: string) => {
+    console.log('🚀 Navigating to:', route);
     onClose();
     showLoading();
+    // Use requestAnimationFrame to ensure navigation happens after drawer closes
+    requestAnimationFrame(() => {
     setTimeout(() => {
+        try {
+          if (route === '/screens/HistoryScreen') {
+            router.push('/screens/HistoryScreen');
+          } else {
       router.push(route as any);
-      // Hide loading after navigation completes (give it time to render)
-      setTimeout(() => {
-        hideLoading();
-      }, 300);
-    }, 100);
+          }
+          console.log('✅ Navigation called for:', route);
+        } catch (error) {
+          console.error('❌ Navigation error:', error);
+          hideLoading();
+        }
+        // Hide loading after navigation completes (give it time to render)
+        setTimeout(() => {
+          hideLoading();
+        }, 500);
+      }, 150);
+    });
   }, [router, onClose, showLoading, hideLoading]);
 
   const { logout } = useAuth();

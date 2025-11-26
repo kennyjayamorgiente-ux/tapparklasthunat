@@ -427,7 +427,16 @@ router.post('/start-parking-session', authenticateToken, async (req, res) => {
       WHERE parking_spot_id = ? AND status = 'reserved'
     `, [reservationData.parking_spots_id]);
 
-    console.log(`✅ Parking session started for reservation ${reservationData.reservation_id}`);
+    // Get the actual start_time from database to ensure accuracy
+    const updatedReservation = await db.query(`
+      SELECT start_time
+      FROM reservations
+      WHERE reservation_id = ?
+    `, [reservationData.reservation_id]);
+
+    const actualStartTime = updatedReservation[0]?.start_time || new Date().toISOString();
+
+    console.log(`✅ Parking session started for reservation ${reservationData.reservation_id} at ${actualStartTime}`);
 
     res.json({
       success: true,
@@ -438,7 +447,7 @@ router.post('/start-parking-session', authenticateToken, async (req, res) => {
         spotNumber: reservationData.spot_number,
         areaName: reservationData.parking_area_name,
         location: reservationData.location,
-        startTime: new Date().toISOString(),
+        startTime: actualStartTime,
         status: 'active'
       }
     });
@@ -505,20 +514,82 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
     const startTime = new Date(reservationData.start_time);
     const endTime = new Date();
     const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
+    const durationHours = Math.ceil(durationMinutes / 60);
 
-    // Update booking status to completed and set end time
-    await db.query(`
-      UPDATE reservations 
-      SET booking_status = 'completed', end_time = NOW()
-      WHERE reservation_id = ?
-    `, [reservationData.reservation_id]);
+    // Get user's subscription hours balance
+    const subscriptionHours = await db.query(`
+      SELECT 
+        COALESCE(SUM(hours_remaining), 0) as total_hours_remaining
+      FROM subscriptions
+      WHERE user_id = ? AND status = 'active' AND hours_remaining > 0
+    `, [reservationData.user_id]);
 
-    // Free the parking spot
-    await db.query(`
-      UPDATE parking_spot 
-      SET status = 'available'
-      WHERE parking_spot_id = ?
-    `, [reservationData.parking_spots_id]);
+    const balanceHours = subscriptionHours[0]?.total_hours_remaining || 0;
+
+    // Calculate charge (hours used)
+    const chargeHours = durationHours;
+
+    // Get active subscription BEFORE updating (to ensure we have the right data)
+    const activeSubscription = await db.query(`
+      SELECT subscription_id, hours_remaining
+      FROM subscriptions
+      WHERE user_id = ? AND status = 'active' AND hours_remaining > 0
+      ORDER BY purchase_date ASC
+      LIMIT 1
+    `, [reservationData.user_id]);
+
+    // Calculate hours to deduct (deduct what's available, up to chargeHours)
+    let hoursToDeduct = 0;
+    
+    if (activeSubscription.length > 0 && balanceHours > 0 && chargeHours > 0) {
+      hoursToDeduct = Math.min(chargeHours, activeSubscription[0].hours_remaining);
+      console.log(`💰 Deduction calculation: chargeHours=${chargeHours}, available=${activeSubscription[0].hours_remaining}, willDeduct=${hoursToDeduct}`);
+    } else {
+      console.log(`⚠️ Cannot deduct: activeSubscription.length=${activeSubscription.length}, balanceHours=${balanceHours}, chargeHours=${chargeHours}`);
+    }
+
+    // Use transaction to ensure all updates happen atomically
+    await db.transaction([
+      // Update booking status to completed and set end time
+      {
+        sql: `
+          UPDATE reservations 
+          SET booking_status = 'completed', end_time = NOW()
+          WHERE reservation_id = ?
+        `,
+        params: [reservationData.reservation_id]
+      },
+      // Free the parking spot
+      {
+        sql: `
+          UPDATE parking_spot 
+          SET status = 'available'
+          WHERE parking_spot_id = ?
+        `,
+        params: [reservationData.parking_spots_id]
+      },
+      // Deduct subscription hours if applicable
+      ...(hoursToDeduct > 0 && activeSubscription.length > 0 ? [{
+        sql: `
+          UPDATE subscriptions 
+          SET hours_remaining = GREATEST(0, hours_remaining - ?), hours_used = hours_used + ?
+          WHERE subscription_id = ?
+        `,
+        params: [hoursToDeduct, hoursToDeduct, activeSubscription[0].subscription_id]
+      }] : [])
+    ]);
+
+    // Verify the deduction by getting updated balance (include all active subscriptions, even if hours_remaining is 0)
+    const updatedSubscriptionHours = await db.query(`
+      SELECT 
+        COALESCE(SUM(hours_remaining), 0) as total_hours_remaining
+      FROM subscriptions
+      WHERE user_id = ? AND status = 'active'
+    `, [reservationData.user_id]);
+
+    const verifiedBalanceHours = updatedSubscriptionHours[0]?.total_hours_remaining || 0;
+    
+    console.log(`✅ Parking session ended - Deducted ${hoursToDeduct} hours. Balance: ${balanceHours} -> ${verifiedBalanceHours}`);
 
     console.log(`✅ Parking session ended for reservation ${reservationData.reservation_id}`);
 
@@ -534,6 +605,9 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
         startTime: reservationData.start_time,
         endTime: endTime.toISOString(),
         durationMinutes: durationMinutes,
+        durationHours: durationHours,
+        chargeHours: hoursToDeduct,
+        balanceHours: verifiedBalanceHours,
         status: 'completed'
       }
     });

@@ -1138,6 +1138,9 @@ export class ApiService {
         startTime: string;
         endTime: string;
         durationMinutes: number;
+        durationHours: number;
+        chargeHours: number;
+        balanceHours: number;
         status: string;
       };
     }>('/attendant/end-parking-session', {

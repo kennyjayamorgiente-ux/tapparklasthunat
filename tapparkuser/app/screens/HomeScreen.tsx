@@ -12,7 +12,7 @@ import {
   PanResponder, 
   Modal, 
   ActivityIndicator, 
-  Alert,
+  Alert, 
   StatusBar,
 } from 'react-native';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
@@ -156,6 +156,12 @@ export default function HomeScreen() {
   const [selectedSpotForBooking, setSelectedSpotForBooking] = useState<any>(null);
   const [showVehicleMismatchModal, setShowVehicleMismatchModal] = useState(false);
   const [mismatchData, setMismatchData] = useState<any>(null);
+  const [canScrollVehicles, setCanScrollVehicles] = useState(false);
+  const vehicleScrollViewWidth = useRef(0);
+  const vehicleContentWidth = useRef(0);
+  const [canScrollFrequentSpots, setCanScrollFrequentSpots] = useState(false);
+  const frequentSpotsScrollViewWidth = useRef(0);
+  const frequentSpotsContentWidth = useRef(0);
 
   const handleAddVehicle = () => {
     router.push('/screens/AddVehicleScreen');
@@ -217,6 +223,16 @@ export default function HomeScreen() {
 
     fetchFrequentSpots();
   }, [isAuthenticated]);
+
+  // Reset scroll state when vehicles change
+  useEffect(() => {
+    setCanScrollVehicles(false);
+  }, [vehicles.length]);
+
+  // Reset scroll state when frequent spots change
+  useEffect(() => {
+    setCanScrollFrequentSpots(false);
+  }, [frequentSpots.length]);
 
   // Get vehicle icon based on type
   const getVehicleIcon = (vehicleType: string) => {
@@ -576,6 +592,7 @@ export default function HomeScreen() {
     
     // Store the selected spot for booking
     setSelectedSpotForBooking(spot);
+    console.log('✅ selectedSpotForBooking set to:', spot);
     
     try {
       let areasToSearch = parkingAreas;
@@ -601,14 +618,29 @@ export default function HomeScreen() {
       
       console.log('🔍 Found parking area:', area);
       console.log('🔍 Available parking areas:', areasToSearch);
+      console.log('🔍 Spot location_name:', spot.location_name);
       
       if (area) {
         setSelectedParkingArea(area);
-        // Show vehicle selection modal directly
-        setIsVehicleSelectionModalVisible(true);
+        console.log('✅ selectedParkingArea set to:', area);
       } else {
-        Alert.alert('Error', 'Could not find parking area for this spot. Please try again.');
+        console.warn('⚠️ Could not find parking area, but proceeding with spot data');
+        // Try to use spot data directly if area not found
+        if (spot.parking_area_id) {
+          console.log('📌 Using parking_area_id from spot:', spot.parking_area_id);
+          // Create a minimal area object from spot data
+          setSelectedParkingArea({
+            id: spot.parking_area_id,
+            name: spot.location_name || 'Unknown Area',
+            location: spot.location_name || ''
+          });
+        }
       }
+      
+      // Show vehicle selection modal directly (even if area not found, we can still show vehicles)
+      console.log('🚀 Setting isVehicleSelectionModalVisible to true');
+      setIsVehicleSelectionModalVisible(true);
+      console.log('✅ Modal should now be visible');
     } catch (error) {
       console.error('Error in handleBookFrequentSpot:', error);
       Alert.alert('Error', 'Failed to load parking areas');
@@ -618,6 +650,8 @@ export default function HomeScreen() {
   const handleCloseVehicleSelectionModal = () => {
     setIsVehicleSelectionModalVisible(false);
     setSelectedVehicle('');
+    // Don't clear selectedSpotForBooking here - it might be needed for retry
+    // Only clear it after successful booking or when explicitly needed
   };
 
   // Handlers for direct booking flow
@@ -890,6 +924,41 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               style={homeScreenStyles.horizontalScroll}
               contentContainerStyle={homeScreenStyles.horizontalScrollContent}
+              onScroll={handleVehicleScroll}
+              scrollEventThrottle={16}
+              onLayout={(event) => {
+                // Store the container width when layout is measured
+                const layoutWidth = event.nativeEvent.layout.width;
+                vehicleScrollViewWidth.current = layoutWidth;
+                console.log('🚗 Vehicle ScrollView layout width:', layoutWidth);
+                // Re-check scrollability if we already have content width
+                if (layoutWidth > 0 && vehicleContentWidth.current > 0) {
+                  const canScroll = vehicleContentWidth.current > layoutWidth + 20;
+                  console.log('🚗 Vehicle re-check after layout:', { 
+                    contentWidth: vehicleContentWidth.current, 
+                    containerWidth: layoutWidth, 
+                    canScroll 
+                  });
+                  setCanScrollVehicles(canScroll);
+                }
+              }}
+              onContentSizeChange={(contentWidth) => {
+                // Store content width
+                vehicleContentWidth.current = contentWidth;
+                // Check if content width exceeds container width
+                const containerWidth = vehicleScrollViewWidth.current || screenWidth;
+                // Add small threshold (20px) to account for padding/margins and ensure we detect overflow
+                const canScroll = contentWidth > containerWidth + 20;
+                console.log('🚗 Vehicle content check:', { 
+                  contentWidth, 
+                  containerWidth, 
+                  canScroll, 
+                  vehicleCount: vehicles.length,
+                  threshold: containerWidth + 20,
+                  screenWidth
+                });
+                setCanScrollVehicles(canScroll);
+              }}
             >
               {(vehicles || []).map((vehicle, index) => (
                 <TouchableOpacity key={vehicle.id || index} style={homeScreenStyles.vehicleCard} onPress={() => handleVehicleCardPress(vehicle)}>
@@ -912,6 +981,28 @@ export default function HomeScreen() {
           )}
         </View>
 
+        {/* Scroll Indicator for Registered Vehicles - Only show when 3+ vehicles and content overflows */}
+        {!isLoadingVehicles && vehicles.length >= 3 && canScrollVehicles && (
+          <View style={homeScreenStyles.progressSection}>
+            <View style={homeScreenStyles.progressContainer}>
+              <View style={homeScreenStyles.progressTrack}>
+                <Animated.View 
+                  style={[
+                    homeScreenStyles.scrollHandle,
+                    {
+                      left: vehicleScrollProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, Math.max(0, screenWidth - 40 - getResponsiveSize(20))],
+                        extrapolate: 'clamp',
+                      }),
+                    }
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Frequently Used Parking Space Section */}
         <View style={homeScreenStyles.section}>
           <View style={homeScreenStyles.sectionHeader}>
@@ -927,6 +1018,39 @@ export default function HomeScreen() {
             contentContainerStyle={homeScreenStyles.horizontalScrollContent}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            onLayout={(event) => {
+              // Store the container width when layout is measured
+              const layoutWidth = event.nativeEvent.layout.width;
+              frequentSpotsScrollViewWidth.current = layoutWidth;
+              console.log('📍 Frequent Spots ScrollView layout width:', layoutWidth);
+              // Re-check scrollability if we already have content width
+              if (layoutWidth > 0 && frequentSpotsContentWidth.current > 0) {
+                const canScroll = frequentSpotsContentWidth.current > layoutWidth + 20;
+                console.log('📍 Frequent spots re-check after layout:', { 
+                  contentWidth: frequentSpotsContentWidth.current, 
+                  containerWidth: layoutWidth, 
+                  canScroll 
+                });
+                setCanScrollFrequentSpots(canScroll);
+              }
+            }}
+            onContentSizeChange={(contentWidth) => {
+              // Store content width
+              frequentSpotsContentWidth.current = contentWidth;
+              // Check if content width exceeds container width
+              const containerWidth = frequentSpotsScrollViewWidth.current || screenWidth;
+              // Add small threshold (20px) to account for padding/margins and ensure we detect overflow
+              const canScroll = contentWidth > containerWidth + 20;
+              console.log('📍 Frequent spots content check:', { 
+                contentWidth, 
+                containerWidth, 
+                canScroll, 
+                spotsCount: frequentSpots.length,
+                threshold: containerWidth + 20,
+                screenWidth
+              });
+              setCanScrollFrequentSpots(canScroll);
+            }}
           >
             {isLoadingFrequentSpots ? (
               <View style={homeScreenStyles.loadingContainer}>
@@ -982,13 +1106,14 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Scroll Indicator Section */}
-        <View style={homeScreenStyles.progressSection}>
-          <View style={homeScreenStyles.progressContainer}>
-            <View style={homeScreenStyles.progressTrack}>
+        {/* Scroll Indicator Section - Only show when 3+ frequent spots and content overflows */}
+        {!isLoadingFrequentSpots && frequentSpots.length >= 3 && canScrollFrequentSpots && (
+          <View style={homeScreenStyles.progressSection}>
+            <View style={homeScreenStyles.progressContainer}>
+              <View style={homeScreenStyles.progressTrack}>
               <Animated.View 
                 style={[
-                  homeScreenStyles.scrollHandle,
+                    homeScreenStyles.scrollHandle,
                   {
                     left: scrollProgress.interpolate({
                       inputRange: [0, 1],
@@ -1001,6 +1126,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+        )}
 
         {/* Select Parking Area Section */}
         <View style={homeScreenStyles.section}>
@@ -1065,16 +1191,21 @@ export default function HomeScreen() {
               </View>
             ) : (
               <View style={homeScreenStyles.parkingAreaButtons}>
-                {(parkingAreas || []).map((area) => (
+                {(parkingAreas || []).map((area) => {
+                  console.log('📍 Parking Area Data:', JSON.stringify(area, null, 2));
+                  return (
                   <TouchableOpacity 
                     key={area.id}
-                    style={homeScreenStyles.parkingAreaButton}
+                      style={homeScreenStyles.parkingAreaButton}
                     onPress={() => handleParkingAreaSelect(area)}
                   >
-                    <Text style={homeScreenStyles.parkingAreaButtonText}>{area.name}</Text>
-                    <Text style={homeScreenStyles.parkingAreaLocation}>{area.location}</Text>
+                      <Text style={homeScreenStyles.parkingAreaButtonText}>{area.name}</Text>
+                      <Text style={homeScreenStyles.parkingAreaLocation}>
+                        {area.location || area.address || area.location_name || 'Location not available'}
+                      </Text>
                   </TouchableOpacity>
-                ))}
+                  );
+                })}
               </View>
             )}
             
@@ -1322,4 +1453,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-});
+  });

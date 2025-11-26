@@ -78,10 +78,10 @@ router.post('/purchase', authenticateToken, [
       // Create payment record
       {
         sql: `
-          INSERT INTO payments (amount, status, payment_date, payment_method_id, subscription_id)
-          VALUES (?, 'paid', NOW(), ?, LAST_INSERT_ID())
+          INSERT INTO payments (user_id, amount, status, payment_date, payment_method_id, subscription_id)
+          VALUES (?, ?, 'paid', NOW(), ?, LAST_INSERT_ID())
         `,
-        params: [plan.cost, payment_method_id]
+        params: [req.user.user_id, plan.cost, payment_method_id]
       }
     ]);
 

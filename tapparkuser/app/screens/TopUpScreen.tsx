@@ -127,7 +127,7 @@ const TopUpScreen: React.FC = () => {
 
   const loadUserProfile = async () => {
     try {
-      const profileResponse = await ApiService.ajaxGetProfile();
+      const profileResponse = await ApiService.getProfile();
       if (profileResponse.success) {
         setUserProfile(profileResponse.data.user);
       }

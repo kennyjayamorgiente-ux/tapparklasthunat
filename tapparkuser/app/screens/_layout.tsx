@@ -21,6 +21,8 @@ export default function ScreensLayout() {
       <Stack.Screen name="AddVehicleScreen" />
       <Stack.Screen name="HomeScreen" />
       <Stack.Screen name="ActiveParkingScreen" />
+      <Stack.Screen name="FavoritesScreen" />
+      <Stack.Screen name="HistoryScreen" />
       <Stack.Screen name="ChangePasswordScreen" />
       <Stack.Screen name="RegisteredVehiclesScreen" />
       <Stack.Screen name="TermsAndConditionsScreen" />

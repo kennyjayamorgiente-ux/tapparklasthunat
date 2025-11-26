@@ -83,6 +83,17 @@ const RegisteredVehiclesScreen: React.FC = () => {
   const motorcycleScrollProgress = useRef(new Animated.Value(0)).current;
   const bikeScrollProgress = useRef(new Animated.Value(0)).current;
 
+  // Scroll state tracking for each category
+  const [canScrollCars, setCanScrollCars] = useState(false);
+  const [canScrollMotorcycles, setCanScrollMotorcycles] = useState(false);
+  const [canScrollBikes, setCanScrollBikes] = useState(false);
+  const carScrollViewWidth = useRef(0);
+  const carContentWidth = useRef(0);
+  const motorcycleScrollViewWidth = useRef(0);
+  const motorcycleContentWidth = useRef(0);
+  const bikeScrollViewWidth = useRef(0);
+  const bikeContentWidth = useRef(0);
+
   // Modal state
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
@@ -165,6 +176,13 @@ const RegisteredVehiclesScreen: React.FC = () => {
     bike: vehicles.filter(v => v.vehicle_type.toLowerCase() === 'bicycle' || v.vehicle_type.toLowerCase() === 'ebike')
   };
 
+  // Reset scroll states when vehicles change
+  useEffect(() => {
+    setCanScrollCars(false);
+    setCanScrollMotorcycles(false);
+    setCanScrollBikes(false);
+  }, [vehicles.length]);
+
 
   const handleDeleteVehicle = (vehicle: any, vehicleType: string) => {
     const vehicleWithType = { ...vehicle, type: vehicleType };
@@ -190,8 +208,9 @@ const RegisteredVehiclesScreen: React.FC = () => {
 
   const handleScroll = (event: any, scrollProgress: Animated.Value) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const scrollPercentage = contentOffset.x / (contentSize.width - layoutMeasurement.width);
-    scrollProgress.setValue(scrollPercentage);
+    const maxScroll = contentSize.width - layoutMeasurement.width;
+    const scrollPercentage = maxScroll > 0 ? contentOffset.x / maxScroll : 0;
+    scrollProgress.setValue(Math.min(Math.max(scrollPercentage, 0), 1));
   };
 
 
@@ -252,6 +271,21 @@ const RegisteredVehiclesScreen: React.FC = () => {
                   contentContainerStyle={registeredVehiclesScreenStyles.horizontalScrollContent}
                   onScroll={(event) => handleScroll(event, carScrollProgress)}
                   scrollEventThrottle={16}
+                  onLayout={(event) => {
+                    const layoutWidth = event.nativeEvent.layout.width;
+                    carScrollViewWidth.current = layoutWidth;
+                    // Re-check scrollability if we already have content width
+                    if (layoutWidth > 0 && carContentWidth.current > 0) {
+                      const canScroll = carContentWidth.current > layoutWidth + 20;
+                      setCanScrollCars(canScroll);
+                    }
+                  }}
+                  onContentSizeChange={(contentWidth) => {
+                    carContentWidth.current = contentWidth;
+                    const containerWidth = carScrollViewWidth.current || screenWidth;
+                    const canScroll = contentWidth > containerWidth + 20;
+                    setCanScrollCars(canScroll);
+                  }}
                 >
                   {groupedVehicles.car.map((vehicle) => (
                   <View key={vehicle.id} style={registeredVehiclesScreenStyles.vehicleCard}>
@@ -294,23 +328,25 @@ const RegisteredVehiclesScreen: React.FC = () => {
                 ))}
               </ScrollView>
 
-              {/* Scroll Indicator */}
-              <View style={registeredVehiclesScreenStyles.scrollIndicatorContainer}>
-                <View style={registeredVehiclesScreenStyles.scrollIndicatorTrack}>
-                  <Animated.View
-                    style={[
-                      registeredVehiclesScreenStyles.scrollIndicatorHandle,
-                      {
-                        left: carScrollProgress.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, screenWidth - getResponsivePadding(40) - getResponsiveSize(20)],
-                          extrapolate: 'clamp',
-                        }),
-                      }
-                    ]}
-                  />
+              {/* Scroll Indicator - Only show when 3+ cars and content overflows */}
+              {groupedVehicles.car.length >= 3 && canScrollCars && (
+                <View style={registeredVehiclesScreenStyles.scrollIndicatorContainer}>
+                  <View style={registeredVehiclesScreenStyles.scrollIndicatorTrack}>
+                    <Animated.View
+                      style={[
+                        registeredVehiclesScreenStyles.scrollIndicatorHandle,
+                        {
+                          left: carScrollProgress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, Math.max(0, (screenWidth - (getResponsivePadding(20) * 2)) - getResponsiveSize(20))],
+                            extrapolate: 'clamp',
+                          }),
+                        }
+                      ]}
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
             )}
 
@@ -325,6 +361,21 @@ const RegisteredVehiclesScreen: React.FC = () => {
                   contentContainerStyle={registeredVehiclesScreenStyles.horizontalScrollContent}
                   onScroll={(event) => handleScroll(event, motorcycleScrollProgress)}
                   scrollEventThrottle={16}
+                  onLayout={(event) => {
+                    const layoutWidth = event.nativeEvent.layout.width;
+                    motorcycleScrollViewWidth.current = layoutWidth;
+                    // Re-check scrollability if we already have content width
+                    if (layoutWidth > 0 && motorcycleContentWidth.current > 0) {
+                      const canScroll = motorcycleContentWidth.current > layoutWidth + 20;
+                      setCanScrollMotorcycles(canScroll);
+                    }
+                  }}
+                  onContentSizeChange={(contentWidth) => {
+                    motorcycleContentWidth.current = contentWidth;
+                    const containerWidth = motorcycleScrollViewWidth.current || screenWidth;
+                    const canScroll = contentWidth > containerWidth + 20;
+                    setCanScrollMotorcycles(canScroll);
+                  }}
                 >
                   {groupedVehicles.motorcycle.map((vehicle) => (
                   <View key={vehicle.id} style={registeredVehiclesScreenStyles.vehicleCard}>
@@ -367,23 +418,25 @@ const RegisteredVehiclesScreen: React.FC = () => {
                 ))}
               </ScrollView>
 
-              {/* Scroll Indicator */}
-              <View style={registeredVehiclesScreenStyles.scrollIndicatorContainer}>
-                <View style={registeredVehiclesScreenStyles.scrollIndicatorTrack}>
-                  <Animated.View
-                    style={[
-                      registeredVehiclesScreenStyles.scrollIndicatorHandle,
-                      {
-                        left: motorcycleScrollProgress.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, screenWidth - getResponsivePadding(40) - getResponsiveSize(20)],
-                          extrapolate: 'clamp',
-                        }),
-                      }
-                    ]}
-                  />
+              {/* Scroll Indicator - Only show when 3+ motorcycles and content overflows */}
+              {groupedVehicles.motorcycle.length >= 3 && canScrollMotorcycles && (
+                <View style={registeredVehiclesScreenStyles.scrollIndicatorContainer}>
+                  <View style={registeredVehiclesScreenStyles.scrollIndicatorTrack}>
+                    <Animated.View
+                      style={[
+                        registeredVehiclesScreenStyles.scrollIndicatorHandle,
+                        {
+                          left: motorcycleScrollProgress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, Math.max(0, (screenWidth - (getResponsivePadding(20) * 2)) - getResponsiveSize(20))],
+                            extrapolate: 'clamp',
+                          }),
+                        }
+                      ]}
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
             )}
 
@@ -398,6 +451,21 @@ const RegisteredVehiclesScreen: React.FC = () => {
                   contentContainerStyle={registeredVehiclesScreenStyles.horizontalScrollContent}
                   onScroll={(event) => handleScroll(event, bikeScrollProgress)}
                   scrollEventThrottle={16}
+                  onLayout={(event) => {
+                    const layoutWidth = event.nativeEvent.layout.width;
+                    bikeScrollViewWidth.current = layoutWidth;
+                    // Re-check scrollability if we already have content width
+                    if (layoutWidth > 0 && bikeContentWidth.current > 0) {
+                      const canScroll = bikeContentWidth.current > layoutWidth + 20;
+                      setCanScrollBikes(canScroll);
+                    }
+                  }}
+                  onContentSizeChange={(contentWidth) => {
+                    bikeContentWidth.current = contentWidth;
+                    const containerWidth = bikeScrollViewWidth.current || screenWidth;
+                    const canScroll = contentWidth > containerWidth + 20;
+                    setCanScrollBikes(canScroll);
+                  }}
                 >
                   {groupedVehicles.bike.map((vehicle) => (
                   <View key={vehicle.id} style={registeredVehiclesScreenStyles.vehicleCard}>
@@ -440,23 +508,25 @@ const RegisteredVehiclesScreen: React.FC = () => {
                 ))}
               </ScrollView>
 
-              {/* Scroll Indicator */}
-              <View style={registeredVehiclesScreenStyles.scrollIndicatorContainer}>
-                <View style={registeredVehiclesScreenStyles.scrollIndicatorTrack}>
-                  <Animated.View
-                    style={[
-                      registeredVehiclesScreenStyles.scrollIndicatorHandle,
-                      {
-                        left: bikeScrollProgress.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, screenWidth - getResponsivePadding(40) - getResponsiveSize(20)],
-                          extrapolate: 'clamp',
-                        }),
-                      }
-                    ]}
-                  />
+              {/* Scroll Indicator - Only show when 3+ bikes and content overflows */}
+              {groupedVehicles.bike.length >= 3 && canScrollBikes && (
+                <View style={registeredVehiclesScreenStyles.scrollIndicatorContainer}>
+                  <View style={registeredVehiclesScreenStyles.scrollIndicatorTrack}>
+                    <Animated.View
+                      style={[
+                        registeredVehiclesScreenStyles.scrollIndicatorHandle,
+                        {
+                          left: bikeScrollProgress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, Math.max(0, (screenWidth - (getResponsivePadding(20) * 2)) - getResponsiveSize(20))],
+                            extrapolate: 'clamp',
+                          }),
+                        }
+                      ]}
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
             </View>
             )}
 

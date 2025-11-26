@@ -36,6 +36,8 @@ const ActiveParkingScreen: React.FC = () => {
   const [qrScanned, setQrScanned] = useState(false);
   const [parkingEndTime, setParkingEndTime] = useState<number | null>(null);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [showParkingEndModal, setShowParkingEndModal] = useState(false);
+  const [parkingEndDetails, setParkingEndDetails] = useState<any>(null);
   
   // Timer state and logic
   const [elapsedTime, setElapsedTime] = useState(0); // in seconds
@@ -46,6 +48,30 @@ const ActiveParkingScreen: React.FC = () => {
   // Real parking start time from booking data
   const parkingStartTime = useRef<number | null>(null);
   const totalParkingTime = 60 * 60; // 1 hour total parking time in seconds
+
+  // Format duration helper
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  // Handle parking end modal close
+  const handleParkingEndModalClose = () => {
+    setShowParkingEndModal(false);
+    setParkingEndDetails(null);
+    // Clear all parking data
+    setBookingData(null);
+    setElapsedTime(0);
+    setParkingEndTime(null);
+    setQrScanned(false);
+    parkingStartTime.current = null;
+    // Navigate back to home
+    router.replace('/screens/HomeScreen');
+  };
 
 
   // Function to load SVG content using AJAX
@@ -100,13 +126,26 @@ const ActiveParkingScreen: React.FC = () => {
           if (response.success) {
             setBookingData(response.data);
             
-            // Set real parking start time from database
-            const startTime = new Date(response.data.timestamps.startTime).getTime();
-            parkingStartTime.current = startTime;
-            
-            // Always start with timer off - wait for QR scan or test button
-            setElapsedTime(0);
-            setIsTimerRunning(false);
+            // If booking is already active, start timer immediately
+            if (response.data.bookingStatus === 'active' && response.data.timestamps.startTime) {
+              const startTime = new Date(response.data.timestamps.startTime).getTime();
+              parkingStartTime.current = startTime;
+              setIsTimerRunning(true);
+              // Calculate elapsed time from database start_time
+              const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
+              setElapsedTime(calculatedElapsed);
+              setQrScanned(true);
+              console.log(`🟢 Booking already active - starting timer immediately with ${calculatedElapsed}s elapsed`);
+            } else {
+              // Set real parking start time from database (but don't start timer yet)
+              if (response.data.timestamps.startTime) {
+                const startTime = new Date(response.data.timestamps.startTime).getTime();
+                parkingStartTime.current = startTime;
+              }
+              // Always start with timer off - wait for QR scan
+              setElapsedTime(0);
+              setIsTimerRunning(false);
+            }
           } else {
             Alert.alert('Error', 'Failed to load booking details');
             router.back();
@@ -128,11 +167,23 @@ const ActiveParkingScreen: React.FC = () => {
               console.log('✅ Found active/reserved reservation:', activeReservation.reservationId, 'Status:', activeReservation.bookingStatus);
               setBookingData(activeReservation);
               
-              // Timer is now purely local - starts only when attendant scans
-              // Don't set parkingStartTime here - it will be set when attendant scans
-              parkingStartTime.current = null;
-              setElapsedTime(0);
-              setIsTimerRunning(false);
+              // If reservation is already active, start timer immediately
+              if (activeReservation.bookingStatus === 'active' && activeReservation.timestamps?.startTime) {
+                const startTime = new Date(activeReservation.timestamps.startTime).getTime();
+                parkingStartTime.current = startTime;
+                setIsTimerRunning(true);
+                // Calculate elapsed time from database start_time
+                const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
+                setElapsedTime(calculatedElapsed);
+                setQrScanned(true);
+                console.log(`🟢 Reservation already active - starting timer immediately with ${calculatedElapsed}s elapsed`);
+              } else {
+                // Timer is now purely local - starts only when attendant scans
+                // Don't set parkingStartTime here - it will be set when attendant scans
+                parkingStartTime.current = null;
+                setElapsedTime(0);
+                setIsTimerRunning(false);
+              }
             } else {
               console.log('❌ No active or reserved reservations found');
               console.log('📊 All booking statuses:', response.data.bookings.map(b => ({ id: b.reservationId, status: b.bookingStatus })));
@@ -245,11 +296,14 @@ const ActiveParkingScreen: React.FC = () => {
           // If attendant started the session and our timer isn't running
           if (bookingData.bookingStatus === 'active' && !isTimerRunning && bookingData.timestamps.startTime) {
             console.log('🟢 Attendant started session - syncing timer');
-            const startTime = new Date(bookingData.timestamps.startTime).getTime();
-            parkingStartTime.current = startTime;
+            // Use current time as start time to ensure timer starts from 0
+            // This avoids delays from database time vs client time
+            const currentTime = Date.now();
+            parkingStartTime.current = currentTime;
             setIsTimerRunning(true);
-            setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+            setElapsedTime(0); // Always start from 0 when first detected
             setQrScanned(true);
+            console.log(`⏱️ Timer started from 0 at ${new Date(currentTime).toISOString()}`);
           }
           
           // If attendant ended the session and our timer is still running
@@ -258,14 +312,56 @@ const ActiveParkingScreen: React.FC = () => {
             setIsTimerRunning(false);
             setParkingEndTime(Date.now());
             
-            // Clear all parking data after session ends
-            setTimeout(() => {
-              setBookingData(null);
-              setElapsedTime(0);
-              setParkingEndTime(null);
-              setQrScanned(false);
-              parkingStartTime.current = null;
-            }, 3000); // Wait 3 seconds before clearing
+            // Fetch parking end details
+            try {
+              const endDetailsResponse = await ApiService.getBookingDetails(bookingData.reservationId);
+              if (endDetailsResponse.success) {
+                const details = endDetailsResponse.data;
+                // Calculate duration
+                const startTime = new Date(details.timestamps.startTime);
+                const endTime = new Date();
+                const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+                const durationHours = Math.ceil(durationMinutes / 60);
+                
+                // Wait a moment for backend to process the deduction, then get updated balance
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Get user's subscription balance AFTER deduction (balance should already be updated by backend)
+                const balanceResponse = await ApiService.getSubscriptionBalance();
+                const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
+                
+                setParkingEndDetails({
+                  durationMinutes,
+                  durationHours,
+                  chargeHours: durationHours,
+                  balanceHours: balanceHours, // This is the balance AFTER deduction from backend
+                  startTime: details.timestamps.startTime,
+                  endTime: endTime.toISOString(),
+                  areaName: details.parkingArea?.name || 'Unknown',
+                  spotNumber: details.parkingSlot?.spotNumber || 'Unknown'
+                });
+                setShowParkingEndModal(true);
+              }
+            } catch (error) {
+              console.error('Error fetching parking end details:', error);
+              // Still show modal with basic info
+              const startTime = bookingData.timestamps?.startTime ? new Date(bookingData.timestamps.startTime) : new Date();
+              const endTime = new Date();
+              const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+              const durationHours = Math.ceil(durationMinutes / 60);
+              
+              setParkingEndDetails({
+                durationMinutes,
+                durationHours,
+                chargeHours: durationHours,
+                balanceHours: 0,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                areaName: bookingData.parkingArea?.name || 'Unknown',
+                spotNumber: bookingData.parkingSlot?.spotNumber || 'Unknown'
+              });
+              setShowParkingEndModal(true);
+            }
           }
         }
       } catch (error) {
@@ -288,8 +384,9 @@ const ActiveParkingScreen: React.FC = () => {
       }
     };
 
-    // Start polling every 3 seconds
-    pollingInterval = setInterval(pollReservationStatus, 3000);
+    // Poll immediately, then start polling every 1 second for real-time updates
+    pollReservationStatus();
+    pollingInterval = setInterval(pollReservationStatus, 1000);
 
     // Cleanup
     return () => {
@@ -786,6 +883,66 @@ const ActiveParkingScreen: React.FC = () => {
                 onPress={() => setShowTestModal(false)}
               >
                 <Text style={activeParkingScreenStyles.spotModalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Parking End Details Modal */}
+        <Modal
+          visible={showParkingEndModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={handleParkingEndModalClose}
+        >
+          <View style={activeParkingScreenStyles.modalOverlay}>
+            <View style={activeParkingScreenStyles.parkingEndModalContainer}>
+              <Text style={activeParkingScreenStyles.parkingEndModalTitle}>Parking Session Ended</Text>
+              
+              {parkingEndDetails && (
+                <View style={activeParkingScreenStyles.parkingEndDetailsContainer}>
+                  <View style={activeParkingScreenStyles.parkingEndDetailRow}>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Duration:</Text>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
+                      {formatDuration(parkingEndDetails.durationMinutes)}
+                    </Text>
+                  </View>
+                  
+                  <View style={activeParkingScreenStyles.parkingEndDetailRow}>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Charge Amount:</Text>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
+                      {parkingEndDetails.chargeHours} {parkingEndDetails.chargeHours === 1 ? 'hour' : 'hours'}
+                    </Text>
+                  </View>
+                  
+                  <View style={activeParkingScreenStyles.parkingEndDetailRow}>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Remaining Balance:</Text>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
+                      {parkingEndDetails.balanceHours} {parkingEndDetails.balanceHours === 1 ? 'hour' : 'hours'}
+                    </Text>
+                  </View>
+                  
+                  <View style={activeParkingScreenStyles.parkingEndDetailRow}>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Parking Area:</Text>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
+                      {parkingEndDetails.areaName}
+                    </Text>
+                  </View>
+                  
+                  <View style={activeParkingScreenStyles.parkingEndDetailRow}>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Spot Number:</Text>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
+                      {parkingEndDetails.spotNumber}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={activeParkingScreenStyles.parkingEndModalButton} 
+                onPress={handleParkingEndModalClose}
+              >
+                <Text style={activeParkingScreenStyles.parkingEndModalButtonText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>

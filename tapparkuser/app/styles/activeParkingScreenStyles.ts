@@ -661,4 +661,61 @@ export const activeParkingScreenStyles = StyleSheet.create({
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
+  // Parking End Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  parkingEndModalContainer: {
+    backgroundColor: 'white',
+    borderRadius: getResponsiveSize(16),
+    padding: getResponsivePadding(24),
+    width: screenWidth * 0.85,
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  parkingEndModalTitle: {
+    fontSize: getResponsiveFontSize(20),
+    fontWeight: 'bold',
+    color: '#8A0000',
+    marginBottom: getResponsiveMargin(20),
+    textAlign: 'center',
+  },
+  parkingEndDetailsContainer: {
+    width: '100%',
+    marginBottom: getResponsiveMargin(24),
+  },
+  parkingEndDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: getResponsivePadding(12),
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  parkingEndDetailLabel: {
+    fontSize: getResponsiveFontSize(14),
+    color: '#666666',
+    fontWeight: '500',
+  },
+  parkingEndDetailValue: {
+    fontSize: getResponsiveFontSize(14),
+    color: '#1F2937',
+    fontWeight: 'bold',
+  },
+  parkingEndModalButton: {
+    backgroundColor: '#8A0000',
+    borderRadius: getResponsiveSize(8),
+    paddingVertical: getResponsivePadding(12),
+    paddingHorizontal: getResponsivePadding(32),
+    width: '100%',
+    alignItems: 'center',
+  },
+  parkingEndModalButtonText: {
+    color: 'white',
+    fontSize: getResponsiveFontSize(16),
+    fontWeight: 'bold',
+  },
 });

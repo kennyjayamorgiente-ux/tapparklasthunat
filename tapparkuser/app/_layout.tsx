@@ -66,10 +66,10 @@ export default function RootLayout() {
 		<GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
 			<AuthProvider>
 				<LoadingProvider>
-					<DrawerProvider>
-						<RootLayoutNav />
+				<DrawerProvider>
+					<RootLayoutNav />
 						<GlobalSpinner />
-					</DrawerProvider>
+				</DrawerProvider>
 				</LoadingProvider>
 			</AuthProvider>
 		</GestureHandlerRootView>

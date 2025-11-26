@@ -1504,3 +1504,5 @@ const createStyles = (screenDimensions: any) => StyleSheet.create({
 });
 
 // Styles are now in historyScreenStyles.ts
+
+export default HistoryScreen;
