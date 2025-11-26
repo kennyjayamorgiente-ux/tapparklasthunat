@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   SafeAreaView,
-  StyleSheet,
   Dimensions,
   TextInput,
   Image,
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SvgXml } from 'react-native-svg';
 import SharedHeader from '../../components/SharedHeader';
 import ApiService from '../../services/api';
+import { addVehicleScreenStyles } from '../styles/addVehicleScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -185,15 +185,15 @@ export default function AddVehicleScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <View style={addVehicleScreenStyles.container}>
       <SharedHeader title="Add Vehicle" />
 
-      <View style={styles.content}>
+      <View style={addVehicleScreenStyles.content}>
           {/* Top Section - Car with Glowing Circles */}
-          <View style={styles.topSection}>
+          <View style={addVehicleScreenStyles.topSection}>
             <Animated.View 
               style={[
-                styles.circleContainer,
+                addVehicleScreenStyles.circleContainer,
                 {
                   transform: [{ scale: pulseAnim }]
                 }
@@ -202,32 +202,32 @@ export default function AddVehicleScreen() {
               <SvgXml xml={circleGlowSvg} width={250} height={250} />
             </Animated.View>
             
-            <View style={styles.carContainer}>
+            <View style={addVehicleScreenStyles.carContainer}>
               <Image 
                 source={require('../assets/img/car.png')} 
-                style={styles.carImage}
+                style={addVehicleScreenStyles.carImage}
                 resizeMode="contain"
               />
             </View>
           </View>
 
           {/* Middle Section - Text */}
-          <View style={styles.middleSection}>
-            <Text style={styles.welcomeText}>
+          <View style={addVehicleScreenStyles.middleSection}>
+            <Text style={addVehicleScreenStyles.welcomeText}>
               ADD YOUR VEHICLE
             </Text>
           </View>
 
           {/* Input Fields */}
-          <View style={styles.inputSection}>
+          <View style={addVehicleScreenStyles.inputSection}>
             {/* Vehicle Type Dropdown - FAQ Style */}
             <TouchableOpacity 
-              style={styles.dropdownContainer}
+              style={addVehicleScreenStyles.dropdownContainer}
               onPress={toggleDropdown}
               activeOpacity={0.7}
             >
-              <View style={styles.dropdownHeader}>
-                <Text style={[styles.dropdownText, !vehicleType && styles.placeholderText]}>
+              <View style={addVehicleScreenStyles.dropdownHeader}>
+                <Text style={[addVehicleScreenStyles.dropdownText, !vehicleType && addVehicleScreenStyles.placeholderText]}>
                   {vehicleType ? VEHICLE_TYPES.find(type => type.value === vehicleType)?.label : "Vehicle Type"}
                 </Text>
                 <Ionicons 
@@ -235,27 +235,27 @@ export default function AddVehicleScreen() {
                   size={20} 
                   color="#800000"
                   style={[
-                    styles.chevronIcon,
+                    addVehicleScreenStyles.chevronIcon,
                     { transform: [{ rotate: isDropdownVisible ? '180deg' : '0deg' }] }
                   ]}
                 />
               </View>
               
               {isDropdownVisible && (
-                <View style={styles.dropdownContent}>
+                <View style={addVehicleScreenStyles.dropdownContent}>
                   {VEHICLE_TYPES.map((type) => (
                     <TouchableOpacity
                       key={type.value}
                       style={[
-                        styles.dropdownItem,
-                        vehicleType === type.value && styles.selectedDropdownItem
+                        addVehicleScreenStyles.dropdownItem,
+                        vehicleType === type.value && addVehicleScreenStyles.selectedDropdownItem
                       ]}
                       onPress={() => handleVehicleTypeSelect(type.value)}
                       activeOpacity={0.7}
                     >
                       <Text style={[
-                        styles.dropdownItemText,
-                        vehicleType === type.value && styles.selectedDropdownItemText
+                        addVehicleScreenStyles.dropdownItemText,
+                        vehicleType === type.value && addVehicleScreenStyles.selectedDropdownItemText
                       ]}>
                         {type.label}
                       </Text>
@@ -266,7 +266,7 @@ export default function AddVehicleScreen() {
             </TouchableOpacity>
 
             <TextInput
-              style={styles.inputField}
+              style={addVehicleScreenStyles.inputField}
               placeholder="Vehicle Color:"
               placeholderTextColor="#9CA3AF"
               value={vehicleColor}
@@ -274,7 +274,7 @@ export default function AddVehicleScreen() {
             />
 
             <TextInput
-              style={styles.inputField}
+              style={addVehicleScreenStyles.inputField}
               placeholder="Plate Number:"
               placeholderTextColor="#9CA3AF"
               value={plateNumber}
@@ -282,7 +282,7 @@ export default function AddVehicleScreen() {
             />
 
             <TextInput
-              style={styles.inputField}
+              style={addVehicleScreenStyles.inputField}
               placeholder="Vehicle Brand:"
               placeholderTextColor="#9CA3AF"
               value={vehicleBrand}
@@ -290,7 +290,7 @@ export default function AddVehicleScreen() {
             />
 
             <TextInput
-              style={styles.inputField}
+              style={addVehicleScreenStyles.inputField}
               placeholder="Vehicle Model:"
               placeholderTextColor="#9CA3AF"
               value={vehicleModel}
@@ -299,24 +299,24 @@ export default function AddVehicleScreen() {
           </View>
 
           {/* Bottom Section - Buttons */}
-          <View style={styles.bottomSection}>
-            <View style={styles.buttonContainer}>
+          <View style={addVehicleScreenStyles.bottomSection}>
+            <View style={addVehicleScreenStyles.buttonContainer}>
               <TouchableOpacity
                 onPress={handleGoBack}
-                style={styles.goBackButton}
+                style={addVehicleScreenStyles.goBackButton}
               >
-                <Text style={styles.goBackButtonText}>Go Back</Text>
+                <Text style={addVehicleScreenStyles.goBackButtonText}>Go Back</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleAddVehicle}
-                style={[styles.addButton, isLoading && styles.disabledButton]}
+                style={[addVehicleScreenStyles.addButton, isLoading && addVehicleScreenStyles.disabledButton]}
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#800000" size="small" />
                 ) : (
-                  <Text style={styles.addButtonText}>+ Add</Text>
+                  <Text style={addVehicleScreenStyles.addButtonText}>+ Add</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -326,198 +326,4 @@ export default function AddVehicleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F8F8',
-  },
-  header: {
-    backgroundColor: '#8A0000',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: getResponsivePadding(20),
-    paddingVertical: getResponsivePadding(16),
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  menuButton: {
-    padding: 4,
-    width: isSmallScreen ? 28 : 32,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-  },
-  headerSpacer: {
-    width: isSmallScreen ? 28 : 32,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsivePadding(24),
-  },
-  topSection: {
-    flex: 0.35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    marginTop: screenHeight * 0.1,
-  },
-  circleContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  carContainer: {
-    zIndex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  carImage: {
-    width: getResponsiveSize(200),
-    height: getResponsiveSize(120),
-  },
-  middleSection: {
-    flex: 0.1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: getResponsivePadding(20),
-    marginTop: getResponsiveSize(20),
-    paddingHorizontal: getResponsivePadding(20),
-  },
-  welcomeText: {
-    fontSize: getResponsiveFontSize(24),
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
-    lineHeight: getResponsiveFontSize(30),
-    paddingHorizontal: getResponsivePadding(10),
-    flexWrap: 'wrap',
-  },
-  inputSection: {
-    flex: 0.4,
-    justifyContent: 'flex-start',
-    paddingHorizontal: getResponsivePadding(20),
-    paddingTop: getResponsivePadding(20),
-    marginTop: getResponsiveSize(10),
-  },
-  dropdownContainer: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#800000',
-    borderRadius: 8,
-    marginBottom: getResponsiveSize(12),
-    overflow: 'hidden',
-  },
-  dropdownHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsivePadding(16),
-    paddingVertical: getResponsivePadding(12),
-    minHeight: isSmallScreen ? 40 : 48,
-  },
-  dropdownText: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#1F2937',
-    flex: 1,
-  },
-  placeholderText: {
-    color: '#9CA3AF',
-  },
-  chevronIcon: {
-    marginLeft: getResponsivePadding(8),
-  },
-  dropdownContent: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
-  },
-  inputField: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#800000',
-    borderRadius: 8,
-    paddingHorizontal: getResponsivePadding(16),
-    paddingVertical: getResponsivePadding(12),
-    fontSize: getResponsiveFontSize(16),
-    marginBottom: getResponsiveSize(12),
-    color: '#1F2937',
-    minHeight: isSmallScreen ? 40 : 48,
-  },
-  bottomSection: {
-    flex: 0.15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: getResponsivePadding(5),
-    paddingTop: getResponsivePadding(20),
-    marginTop: getResponsiveSize(10),
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    gap: getResponsiveSize(16),
-  },
-  goBackButton: {
-    flex: 1,
-    backgroundColor: '#E5E7EB',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(16),
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: getResponsiveSize(48),
-  },
-  goBackButtonText: {
-    fontSize: getResponsiveFontSize(18),
-    fontWeight: '600',
-    color: '#374151',
-  },
-  addButton: {
-    flex: 1,
-    backgroundColor: '#800000',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(16),
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: getResponsiveSize(48),
-  },
-  addButtonText: {
-    fontSize: getResponsiveFontSize(18),
-    fontWeight: '600',
-    color: 'white',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  dropdownItem: {
-    paddingHorizontal: getResponsivePadding(16),
-    paddingVertical: getResponsivePadding(12),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FAFAFA',
-  },
-  selectedDropdownItem: {
-    backgroundColor: '#FEF2F2',
-  },
-  dropdownItemText: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#1F2937',
-    fontWeight: '500',
-  },
-  selectedDropdownItemText: {
-    color: '#800000',
-    fontWeight: '600',
-  },
-});
+// Styles are now in addVehicleScreenStyles.ts

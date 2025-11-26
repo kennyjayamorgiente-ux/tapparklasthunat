@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { 
+import {
   View, 
   Text, 
-  StyleSheet, 
   ScrollView,
   Dimensions,
   TouchableOpacity
@@ -14,6 +13,7 @@ import {
   tapParkLogoSvg,
   maroonSimpleArrowDownSvg
 } from '../assets/icons/index2';
+import { faqScreenStyles } from '../styles/faqScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -109,63 +109,63 @@ const FAQScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={faqScreenStyles.container}>
       <SharedHeader 
         title="FAQs" 
         showBackButton={true}
         onBackPress={() => router.back()}
       />
       
-      <View style={styles.scrollContainer}>
+      <View style={faqScreenStyles.scrollContainer}>
         {/* Background Section */}
-        <View style={styles.backgroundSection} />
+        <View style={faqScreenStyles.backgroundSection} />
         
         {/* Profile Content Card */}
-        <View style={styles.profileCard}>
+        <View style={faqScreenStyles.profileCard}>
           {/* Profile Picture Section */}
-          <View style={styles.profilePictureSection}>
-            <View style={styles.profilePictureContainer}>
+          <View style={faqScreenStyles.profilePictureSection}>
+            <View style={faqScreenStyles.profilePictureContainer}>
               <SvgXml 
                 xml={tapParkLogoSvg}
                 width={getResponsiveSize(120)}
                 height={getResponsiveSize(120)}
               />
             </View>
-            <View style={styles.userInfoContainer}>
-              <Text style={styles.userName}>FREQUENTLY ASKED</Text>
-              <Text style={styles.userEmail}>QUESTIONS</Text>
+            <View style={faqScreenStyles.userInfoContainer}>
+              <Text style={faqScreenStyles.userName}>FREQUENTLY ASKED</Text>
+              <Text style={faqScreenStyles.userEmail}>QUESTIONS</Text>
             </View>
           </View>
 
           {/* FAQ Content */}
           <ScrollView 
-            style={styles.faqScroll}
+            style={faqScreenStyles.faqScroll}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.faqContent}
+            contentContainerStyle={faqScreenStyles.faqContent}
           >
             {faqData.map((faq, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.faqItem}
+                style={faqScreenStyles.faqItem}
                 onPress={() => toggleExpanded(index)}
                 activeOpacity={0.7}
               >
-                <View style={styles.faqQuestionContainer}>
-                  <Text style={styles.faqQuestion}>{faq.question}</Text>
+                <View style={faqScreenStyles.faqQuestionContainer}>
+                  <Text style={faqScreenStyles.faqQuestion}>{faq.question}</Text>
                   <SvgXml 
                     xml={maroonSimpleArrowDownSvg}
                     width={getResponsiveSize(16)}
                     height={getResponsiveSize(16)}
                     style={[
-                      styles.chevronIcon,
+                      faqScreenStyles.chevronIcon,
                       { transform: [{ rotate: expandedItems.includes(index) ? '180deg' : '0deg' }] }
                     ]}
                   />
                 </View>
                 
                 {expandedItems.includes(index) && (
-                  <View style={styles.faqAnswerContainer}>
-                    <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                  <View style={faqScreenStyles.faqAnswerContainer}>
+                    <Text style={faqScreenStyles.faqAnswer}>{faq.answer}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -177,116 +177,6 @@ const FAQScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#383838',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  backgroundSection: {
-    height: screenHeight * 0.3,
-    position: 'relative',
-  },
-  profileCard: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: getResponsiveSize(20),
-    borderTopRightRadius: getResponsiveSize(20),
-    marginTop: -getResponsiveSize(70),
-    minHeight: screenHeight * 0.75,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: getResponsiveSize(8),
-    paddingTop: getResponsivePadding(30),
-    paddingHorizontal: getResponsivePadding(20),
-    paddingBottom: getResponsivePadding(20),
-    flex: 1,
-  },
-  profilePictureSection: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: getResponsivePadding(25),
-    paddingHorizontal: getResponsivePadding(20),
-  },
-  profilePictureContainer: {
-    position: 'relative',
-    marginTop: -getResponsiveSize(70),
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: getResponsiveSize(140),
-    height: getResponsiveSize(140),
-    borderRadius: getResponsiveSize(70),
-  },
-  userInfoContainer: {
-    alignItems: 'center',
-    marginTop: getResponsiveSize(15),
-  },
-  userName: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsivePadding(5),
-    textAlign: 'center',
-  },
-  userEmail: {
-    fontSize: getResponsiveFontSize(18),
-    color: '#666',
-    textAlign: 'center',
-  },
-  faqScroll: {
-    maxHeight: screenHeight * 0.5,
-  },
-  faqContent: {
-    paddingBottom: getResponsivePadding(20),
-  },
-  faqTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsivePadding(20),
-    paddingHorizontal: getResponsivePadding(20),
-  },
-  faqItem: {
-    backgroundColor: '#F8F8F8',
-    borderRadius: getResponsiveSize(12),
-    marginBottom: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(16),
-    paddingVertical: getResponsivePadding(12),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  faqQuestionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  faqQuestion: {
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: '600',
-    color: '#8A0000',
-    flex: 1,
-    marginRight: getResponsivePadding(10),
-  },
-  chevronIcon: {
-    marginLeft: getResponsivePadding(10),
-  },
-  faqAnswerContainer: {
-    marginTop: getResponsivePadding(12),
-    paddingTop: getResponsivePadding(12),
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-  },
-  faqAnswer: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    lineHeight: getResponsiveFontSize(20),
-  },
-});
+// Styles are now in faqScreenStyles.ts
 
 export default FAQScreen;

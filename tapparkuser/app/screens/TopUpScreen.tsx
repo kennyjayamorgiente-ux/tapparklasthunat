@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -22,6 +21,7 @@ import {
   maroonProfitHandIconSvg
 } from '../assets/icons/index2';
 import { ApiService } from '../../services/api';
+import { topUpScreenStyles } from '../styles/topUpScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -100,7 +100,7 @@ const TopUpScreen: React.FC = () => {
 
     if (profileImageUrl) {
       return (
-        <View style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
+        <View style={[topUpScreenStyles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
           <ExpoImage
             key={profileImageUrl}
             source={{ uri: profileImageUrl }}
@@ -117,8 +117,8 @@ const TopUpScreen: React.FC = () => {
     }
 
     return (
-      <View style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.profileInitials, { fontSize: size * 0.3 }]}>
+      <View style={[topUpScreenStyles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={[topUpScreenStyles.profileInitials, { fontSize: size * 0.3 }]}>
           {getInitials()}
         </Text>
       </View>
@@ -206,38 +206,38 @@ const TopUpScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={topUpScreenStyles.container}>
       <SharedHeader 
         title="Top up" 
         showBackButton={true}
         onBackPress={() => router.back()}
       />
       
-      <View style={styles.scrollContainer}>
+      <View style={topUpScreenStyles.scrollContainer}>
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={topUpScreenStyles.profileCard}>
           {/* Profile Picture Section */}
-          <View style={styles.profilePictureSection}>
-            <View style={styles.profilePictureContainer}>
+          <View style={topUpScreenStyles.profilePictureSection}>
+            <View style={topUpScreenStyles.profilePictureContainer}>
               <ProfilePicture size={getResponsiveSize(140)} />
             </View>
-            <View style={styles.userInfoContainer}>
+            <View style={topUpScreenStyles.userInfoContainer}>
               {loading ? (
-                <View style={styles.loadingContainer}>
+                <View style={topUpScreenStyles.loadingContainer}>
                   <ActivityIndicator size="small" color="#8A0000" />
-                  <Text style={styles.loadingText}>Loading...</Text>
+                  <Text style={topUpScreenStyles.loadingText}>Loading...</Text>
                 </View>
               ) : userProfile ? (
                 <>
-                  <Text style={styles.userName}>
+                  <Text style={topUpScreenStyles.userName}>
                     {userProfile.first_name?.toUpperCase()} {userProfile.last_name?.toUpperCase()}
                   </Text>
-                  <Text style={styles.userEmail}>{userProfile.email}</Text>
+                  <Text style={topUpScreenStyles.userEmail}>{userProfile.email}</Text>
                 </>
               ) : (
                 <>
-                  <Text style={styles.userName}>USER</Text>
-                  <Text style={styles.userEmail}>No profile data</Text>
+                  <Text style={topUpScreenStyles.userName}>USER</Text>
+                  <Text style={topUpScreenStyles.userEmail}>No profile data</Text>
                 </>
               )}
             </View>
@@ -245,11 +245,11 @@ const TopUpScreen: React.FC = () => {
 
           {/* Plans Section */}
           <ScrollView 
-            style={styles.profileCardScroll}
+            style={topUpScreenStyles.profileCardScroll}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.plansSection}>
-              <View style={styles.plansHeader}>
+            <View style={topUpScreenStyles.plansSection}>
+              <View style={topUpScreenStyles.plansHeader}>
                 {maroonProfitHandIconSvg && (
                   <SvgXml 
                     xml={maroonProfitHandIconSvg}
@@ -257,35 +257,35 @@ const TopUpScreen: React.FC = () => {
                     height={getResponsiveSize(20)}
                   />
                 )}
-                <Text style={styles.plansTitle}>Select a Plan:</Text>
+                <Text style={topUpScreenStyles.plansTitle}>Select a Plan:</Text>
               </View>
               
-              <View style={styles.plansList}>
+              <View style={topUpScreenStyles.plansList}>
                 {loading ? (
-                  <View style={styles.loadingContainer}>
+                  <View style={topUpScreenStyles.loadingContainer}>
                     <ActivityIndicator size="large" color="#8A0000" />
-                    <Text style={styles.loadingText}>Loading plans...</Text>
+                    <Text style={topUpScreenStyles.loadingText}>Loading plans...</Text>
                   </View>
                 ) : plans && plans.length > 0 ? (
                   plans.map((plan, index) => (
                     <TouchableOpacity 
                       key={plan.plan_id}
-                      style={styles.planCard}
+                      style={topUpScreenStyles.planCard}
                       onPress={() => handleSelectPlan(plan)}
                       activeOpacity={0.7}
                     >
-                      <View style={styles.planHeader}>
-                        <Text style={styles.planTitle}>{plan.plan_name}</Text>
-                        <Text style={styles.planSubtitle}>{plan.description}</Text>
+                      <View style={topUpScreenStyles.planHeader}>
+                        <Text style={topUpScreenStyles.planTitle}>{plan.plan_name}</Text>
+                        <Text style={topUpScreenStyles.planSubtitle}>{plan.description}</Text>
                       </View>
                       
-                      <View style={styles.planContent}>
-                        <View style={styles.priceSection}>
-                          <Text style={styles.price}>{plan.cost}</Text>
-                          <Text style={styles.currency}>pesos</Text>
+                      <View style={topUpScreenStyles.planContent}>
+                        <View style={topUpScreenStyles.priceSection}>
+                          <Text style={topUpScreenStyles.price}>{plan.cost}</Text>
+                          <Text style={topUpScreenStyles.currency}>pesos</Text>
                         </View>
                         
-                        <View style={styles.hoursSection}>
+                        <View style={topUpScreenStyles.hoursSection}>
                           {maroonTimeIconSvg && (
                             <SvgXml 
                               xml={maroonTimeIconSvg}
@@ -293,21 +293,21 @@ const TopUpScreen: React.FC = () => {
                               height={getResponsiveSize(20)}
                             />
                           )}
-                          <Text style={styles.hoursText}>{plan.number_of_hours} hours</Text>
+                          <Text style={topUpScreenStyles.hoursText}>{plan.number_of_hours} hours</Text>
                         </View>
                         
                         <TouchableOpacity 
-                          style={styles.selectButton}
+                          style={topUpScreenStyles.selectButton}
                           onPress={() => handleSelectPlan(plan)}
                         >
-                          <Text style={styles.selectButtonText}>Select {plan.number_of_hours} hours</Text>
+                          <Text style={topUpScreenStyles.selectButtonText}>Select {plan.number_of_hours} hours</Text>
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
                   ))
                 ) : (
-                  <View style={styles.loadingContainer}>
-                    <Text style={styles.loadingText}>No plans available</Text>
+                  <View style={topUpScreenStyles.loadingContainer}>
+                    <Text style={topUpScreenStyles.loadingText}>No plans available</Text>
                   </View>
                 )}
               </View>
@@ -323,31 +323,31 @@ const TopUpScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={handleCloseConfirmationModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmationModalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Confirm Plan Selection</Text>
+        <View style={topUpScreenStyles.modalOverlay}>
+          <View style={topUpScreenStyles.confirmationModalContainer}>
+            <View style={topUpScreenStyles.modalHeader}>
+              <Text style={topUpScreenStyles.modalTitle}>Confirm Plan Selection</Text>
               <TouchableOpacity onPress={handleCloseConfirmationModal}>
-                <Text style={styles.closeXButton}>✕</Text>
+                <Text style={topUpScreenStyles.closeXButton}>✕</Text>
               </TouchableOpacity>
             </View>
             
             {selectedPlan && (
-              <View style={styles.planDetailsContainer}>
-                <View style={styles.planInfoCard}>
-                  <Text style={styles.planInfoTitle}>{selectedPlan.plan_name}</Text>
-                  <Text style={styles.planInfoSubtitle}>{selectedPlan.description}</Text>
+              <View style={topUpScreenStyles.planDetailsContainer}>
+                <View style={topUpScreenStyles.planInfoCard}>
+                  <Text style={topUpScreenStyles.planInfoTitle}>{selectedPlan.plan_name}</Text>
+                  <Text style={topUpScreenStyles.planInfoSubtitle}>{selectedPlan.description}</Text>
                   
-                  <View style={styles.planInfoContent}>
-                    <View style={styles.priceInfoSection}>
-                      <Text style={styles.priceInfoLabel}>Total Amount:</Text>
-                      <View style={styles.priceInfoValue}>
-                        <Text style={styles.priceInfoAmount}>{selectedPlan.cost}</Text>
-                        <Text style={styles.priceInfoCurrency}>pesos</Text>
+                  <View style={topUpScreenStyles.planInfoContent}>
+                    <View style={topUpScreenStyles.priceInfoSection}>
+                      <Text style={topUpScreenStyles.priceInfoLabel}>Total Amount:</Text>
+                      <View style={topUpScreenStyles.priceInfoValue}>
+                        <Text style={topUpScreenStyles.priceInfoAmount}>{selectedPlan.cost}</Text>
+                        <Text style={topUpScreenStyles.priceInfoCurrency}>pesos</Text>
                       </View>
                     </View>
                     
-                    <View style={styles.hoursInfoSection}>
+                    <View style={topUpScreenStyles.hoursInfoSection}>
                       {maroonTimeIconSvg && (
                         <SvgXml 
                           xml={maroonTimeIconSvg}
@@ -355,30 +355,30 @@ const TopUpScreen: React.FC = () => {
                           height={getResponsiveSize(20)}
                         />
                       )}
-                      <Text style={styles.hoursInfoText}>{selectedPlan.number_of_hours} hours will be added to your account</Text>
+                      <Text style={topUpScreenStyles.hoursInfoText}>{selectedPlan.number_of_hours} hours will be added to your account</Text>
                     </View>
                     
-                    <Text style={styles.planDescription}>{selectedPlan.description}</Text>
+                    <Text style={topUpScreenStyles.planDescription}>{selectedPlan.description}</Text>
                   </View>
                 </View>
                 
-                <View style={styles.modalButtonsContainer}>
+                <View style={topUpScreenStyles.modalButtonsContainer}>
                   <TouchableOpacity 
-                    style={styles.cancelButton}
+                    style={topUpScreenStyles.cancelButton}
                     onPress={handleCloseConfirmationModal}
                   >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                    <Text style={topUpScreenStyles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
-                    style={[styles.confirmButton, purchasing && styles.confirmButtonDisabled]}
+                    style={[topUpScreenStyles.confirmButton, purchasing && topUpScreenStyles.confirmButtonDisabled]}
                     onPress={handleConfirmPurchase}
                     disabled={purchasing}
                   >
                     {purchasing ? (
                       <ActivityIndicator size="small" color="white" />
                     ) : (
-                      <Text style={styles.confirmButtonText}>Confirm Purchase</Text>
+                      <Text style={topUpScreenStyles.confirmButtonText}>Confirm Purchase</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -391,342 +391,6 @@ const TopUpScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#383838',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: getResponsivePadding(20),
-  },
-  profileCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    borderTopLeftRadius: getResponsiveSize(20),
-    borderTopRightRadius: getResponsiveSize(20),
-    paddingTop: getResponsivePadding(10),
-    paddingBottom: getResponsivePadding(35),
-    paddingHorizontal: getResponsivePadding(20),
-    maxHeight: screenHeight * 0.75,
-    zIndex: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: getResponsiveSize(12),
-    elevation: 12,
-  },
-  profilePictureSection: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: getResponsivePadding(10),
-  },
-  profilePictureContainer: {
-    position: 'relative',
-    marginTop: -getResponsiveSize(70),
-    backgroundColor: 'transparent',
-    borderRadius: getResponsiveSize(90),
-    width: getResponsiveSize(180),
-    height: getResponsiveSize(180),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profilePicture: {
-    backgroundColor: '#8A0000',
-    borderWidth: 3,
-    borderColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInitials: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  userInfoContainer: {
-    alignItems: 'center',
-    marginTop: getResponsiveSize(5),
-  },
-  userName: {
-    fontSize: getResponsiveFontSize(28),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsivePadding(8),
-    textAlign: 'center',
-  },
-  userEmail: {
-    fontSize: getResponsiveFontSize(18),
-    color: '#666',
-    textAlign: 'center',
-  },
-  profileCardScroll: {
-    flex: 1,
-  },
-  plansSection: {
-    marginTop: getResponsivePadding(10),
-  },
-  plansHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: getResponsivePadding(15),
-  },
-  plansTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginLeft: getResponsivePadding(10),
-  },
-  plansList: {
-    paddingLeft: getResponsivePadding(10),
-  },
-  planCard: {
-    backgroundColor: 'white',
-    borderRadius: getResponsiveSize(12),
-    marginBottom: getResponsivePadding(15),
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  planHeader: {
-    backgroundColor: '#F5F5F5',
-    padding: getResponsivePadding(15),
-  },
-  planTitle: {
-    fontSize: getResponsiveFontSize(18),
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: getResponsivePadding(5),
-  },
-  planSubtitle: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-  },
-  planContent: {
-    padding: getResponsivePadding(15),
-  },
-  priceSection: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: getResponsivePadding(15),
-  },
-  price: {
-    fontSize: getResponsiveFontSize(32),
-    fontWeight: 'bold',
-    color: '#8A0000',
-  },
-  currency: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#000',
-    marginLeft: getResponsivePadding(5),
-  },
-  hoursSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: getResponsivePadding(20),
-  },
-  hoursText: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#8A0000',
-    marginLeft: getResponsivePadding(10),
-    fontWeight: 'bold',
-  },
-  selectButton: {
-    backgroundColor: '#8A0000',
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(20),
-    borderRadius: getResponsiveSize(8),
-    alignItems: 'center',
-  },
-  selectButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  confirmationModalContainer: {
-    backgroundColor: 'white',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(20),
-    width: screenWidth * 0.9,
-    maxWidth: 400,
-    maxHeight: screenHeight * 0.75,
-    minHeight: screenHeight * 0.5,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(20),
-  },
-  modalTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#1F2937',
-    flex: 1,
-  },
-  closeXButton: {
-    fontSize: getResponsiveFontSize(20),
-    color: '#8A0000',
-    fontWeight: 'bold',
-  },
-  planDetailsContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-    minHeight: 0,
-  },
-  planInfoCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: getResponsiveSize(12),
-    padding: getResponsivePadding(16),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    flex: 1,
-    marginBottom: getResponsiveMargin(16),
-  },
-  planInfoTitle: {
-    fontSize: getResponsiveFontSize(22),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(5),
-  },
-  planInfoSubtitle: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#666666',
-    marginBottom: getResponsiveMargin(15),
-  },
-  planInfoContent: {
-    flex: 1,
-  },
-  priceInfoSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(15),
-    paddingBottom: getResponsivePadding(15),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  priceInfoLabel: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#333333',
-    fontWeight: '600',
-  },
-  priceInfoValue: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  priceInfoAmount: {
-    fontSize: getResponsiveFontSize(28),
-    fontWeight: 'bold',
-    color: '#8A0000',
-  },
-  priceInfoCurrency: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#8A0000',
-    marginLeft: getResponsivePadding(5),
-  },
-  hoursInfoSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(15),
-  },
-  hoursInfoText: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#8A0000',
-    marginLeft: getResponsivePadding(10),
-    fontWeight: '600',
-  },
-  planDescription: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666666',
-    lineHeight: getResponsiveFontSize(20),
-    fontStyle: 'italic',
-  },
-  modalButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: getResponsiveMargin(12),
-    marginTop: getResponsiveMargin(20),
-    marginBottom: getResponsiveMargin(10),
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(16),
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: getResponsiveSize(44),
-  },
-  cancelButtonText: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666666',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  confirmButton: {
-    flex: 1,
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(16),
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: getResponsiveSize(44),
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  confirmButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(14),
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: getResponsivePadding(40),
-  },
-  loadingText: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#8A0000',
-    marginTop: getResponsivePadding(10),
-  },
-  confirmButtonDisabled: {
-    opacity: 0.6,
-  },
-});
+// Styles are now in topUpScreenStyles.ts
 
 export default TopUpScreen;

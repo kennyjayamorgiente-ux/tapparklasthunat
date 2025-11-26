@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import SharedHeader from '../components/SharedHeader';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 import { profileScreenStyles } from './styles/profileScreenStyles';
 import { 
   maroonLockIconSvg,
@@ -33,6 +34,7 @@ import { useScreenDimensions } from '../hooks/use-screen-dimensions';
 const ProfileScreen: React.FC = () => {
   const router = useRouter();
   const { user, checkAuthStatus } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const refreshAuth = React.useMemo(() => (
     typeof checkAuthStatus === 'function'
       ? checkAuthStatus
@@ -135,31 +137,51 @@ const ProfileScreen: React.FC = () => {
       id: 'changePassword',
       title: 'Change Password',
       icon: maroonLockIconSvg,
-      onPress: () => router.push('/screens/ChangePasswordScreen')
+      onPress: () => {
+        showLoading();
+        router.push('/screens/ChangePasswordScreen');
+        setTimeout(() => hideLoading(), 300);
+      }
     },
     {
       id: 'registeredVehicles',
       title: 'Registered Vehicles',
       icon: maroonNewCarIconSvg,
-      onPress: () => router.push('/screens/RegisteredVehiclesScreen')
+      onPress: () => {
+        showLoading();
+        router.push('/screens/RegisteredVehiclesScreen');
+        setTimeout(() => hideLoading(), 300);
+      }
     },
     {
       id: 'termsConditions',
       title: 'Terms & Conditions',
       icon: maroonTestPaperIconSvg,
-      onPress: () => router.push('/screens/TermsAndConditionsScreen')
+      onPress: () => {
+        showLoading();
+        router.push('/screens/TermsAndConditionsScreen');
+        setTimeout(() => hideLoading(), 300);
+      }
     },
     {
       id: 'balance',
       title: 'Balance',
       icon: maroonDebitIconSvg,
-      onPress: () => router.push('/screens/BalanceScreen')
+      onPress: () => {
+        showLoading();
+        router.push('/screens/BalanceScreen');
+        setTimeout(() => hideLoading(), 300);
+      }
     },
     {
       id: 'faq',
       title: 'FAQ',
       icon: maroonInfoIconSvg,
-      onPress: () => router.push('/screens/FAQScreen')
+      onPress: () => {
+        showLoading();
+        router.push('/screens/FAQScreen');
+        setTimeout(() => hideLoading(), 300);
+      }
     }
   ];
 

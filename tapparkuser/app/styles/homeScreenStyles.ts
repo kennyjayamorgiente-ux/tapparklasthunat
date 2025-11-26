@@ -38,10 +38,11 @@ const getResponsiveMargin = (size: number): number => {
 export const homeScreenStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   sloganSection: {
     paddingHorizontal: getResponsivePadding(20),
@@ -92,7 +93,7 @@ export const homeScreenStyles = StyleSheet.create({
     paddingHorizontal: getResponsivePadding(20),
   },
   vehicleCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#fcfcfc',
     borderWidth: 1,
     borderColor: '#8A0000',
     borderRadius: 12,
@@ -124,7 +125,7 @@ export const homeScreenStyles = StyleSheet.create({
     marginBottom: getResponsiveMargin(8),
   },
   parkingCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#fcfcfc',
     borderWidth: 1,
     borderColor: '#8A0000',
     borderRadius: 12,
@@ -213,7 +214,7 @@ export const homeScreenStyles = StyleSheet.create({
     fontWeight: '600',
   },
   areaCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#fcfcfc',
     borderWidth: 1,
     borderColor: '#8A0000',
     borderRadius: 12,
@@ -443,8 +444,8 @@ export const homeScreenStyles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: getResponsiveMargin(20),
   },
-  vehicleCard: {
-    backgroundColor: 'white',
+  vehicleSelectionModalCard: {
+    backgroundColor: '#fcfcfc',
     borderRadius: getResponsiveSize(12),
     padding: getResponsivePadding(16),
     borderWidth: 1,
@@ -458,7 +459,7 @@ export const homeScreenStyles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#8A0000',
   },
-  vehicleIconContainer: {
+  vehicleSelectionModalIconContainer: {
     backgroundColor: '#8A0000',
     borderRadius: getResponsiveSize(8),
     padding: getResponsivePadding(12),

@@ -41,8 +41,8 @@ const SharedHeader: React.FC<SharedHeaderProps> = ({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={[styles.header, { 
-        paddingHorizontal: getAdaptivePadding(screenDimensions, 16),
-        paddingVertical: getAdaptivePadding(screenDimensions, 12)
+        paddingHorizontal: getAdaptivePadding(screenDimensions, 20),
+        paddingVertical: getAdaptivePadding(screenDimensions, 16) + 3
       }]}>
         <TouchableOpacity 
           style={styles.leftButton} 
@@ -76,11 +76,13 @@ const SharedHeader: React.FC<SharedHeaderProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     backgroundColor: 'transparent',
+    marginBottom: 0,
   },
   header: {
     backgroundColor: '#8A0000',
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 0,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: {

@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#8A0000',
     paddingHorizontal: getResponsivePadding(20),
     paddingVertical: getResponsivePadding(16),
-    marginBottom: getResponsiveMargin(20),
+    marginBottom: 0,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: {

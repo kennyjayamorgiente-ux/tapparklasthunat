@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  StyleSheet, 
   TouchableOpacity, 
   Dimensions,
   ScrollView,
@@ -17,8 +16,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import { SvgXml } from 'react-native-svg';
 import ApiService from '../../services/api';
+import { favoritesScreenStyles } from '../styles/favoritesScreenStyles';
 import { 
   maroonUsersEditIconSvg,
   maroonLocationIconSvg,
@@ -80,6 +81,7 @@ const getResponsiveMargin = (baseMargin: number) => {
 const FavoritesScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const vehicleScrollProgress = useRef(new Animated.Value(0)).current;
   const [isVehicleSelectionModalVisible, setIsVehicleSelectionModalVisible] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState('');
@@ -106,7 +108,7 @@ const FavoritesScreen: React.FC = () => {
     // If profile image URL is provided, show the image
     if (profileImageUrl) {
       return (
-        <View style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
+        <View style={[favoritesScreenStyles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
           <ExpoImage
             key={profileImageUrl}
             source={{ uri: profileImageUrl }}
@@ -124,8 +126,8 @@ const FavoritesScreen: React.FC = () => {
 
     // Fallback to initials
     return (
-      <View style={[styles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
-        <Text style={[styles.profileInitials, { fontSize: size * 0.3 }]}>
+      <View style={[favoritesScreenStyles.profilePicture, { width: size, height: size, borderRadius: size / 2 }]}>
+        <Text style={[favoritesScreenStyles.profileInitials, { fontSize: size * 0.3 }]}>
           {getInitials()}
         </Text>
       </View>
@@ -310,6 +312,7 @@ const FavoritesScreen: React.FC = () => {
               text: 'OK',
               onPress: () => {
                 // Navigate to ActiveParkingScreen with complete booking details
+                showLoading('Loading parking session...');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -326,6 +329,7 @@ const FavoritesScreen: React.FC = () => {
                     status: response.data.bookingDetails.status
                   }
                 });
+                setTimeout(() => hideLoading(), 300);
                 // Reset states
                 setIsVehicleSelectionModalVisible(false);
                 setSelectedVehicle('');
@@ -396,76 +400,80 @@ const FavoritesScreen: React.FC = () => {
   const favoriteSpots = favorites;
 
   return (
-    <View style={styles.container}>
+    <View style={favoritesScreenStyles.container}>
       <SharedHeader 
         title="Favorites" 
         showBackButton={false}
       />
       
-      <View style={styles.scrollContainer}>
+      <View style={favoritesScreenStyles.scrollContainer}>
 
         {/* Profile Content Card */}
-        <View style={styles.profileCard}>
+        <View style={favoritesScreenStyles.profileCard}>
           {/* Profile Picture Section */}
-          <View style={styles.fixedProfileSection}>
-            <View style={styles.profilePictureContainer}>
+          <View style={favoritesScreenStyles.fixedProfileSection}>
+            <View style={favoritesScreenStyles.profilePictureContainer}>
               <ProfilePicture size={getResponsiveSize(180)} />
             </View>
             
-            <View style={styles.userInfoContainer}>
-              <Text style={styles.userName}>FAVORITE SPOTS</Text>
-              <Text style={styles.userEmail}>YOUR SAVED PARKING LOCATIONS</Text>
+            <View style={favoritesScreenStyles.userInfoContainer}>
+              <Text style={favoritesScreenStyles.userName}>FAVORITE SPOTS</Text>
+              <Text style={favoritesScreenStyles.userEmail}>YOUR SAVED PARKING LOCATIONS</Text>
             </View>
           </View>
 
-          <ScrollView style={styles.profileCardScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={favoritesScreenStyles.profileCardScroll} 
+            contentContainerStyle={favoritesScreenStyles.profileCardScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Favorite Spots */}
-            <View style={styles.spotsContainer}>
-              <Text style={styles.spotsTitle}>Favorite Spots</Text>
+            <View style={favoritesScreenStyles.spotsContainer}>
+              <Text style={favoritesScreenStyles.spotsTitle}>Favorite Spots</Text>
               
               {isLoading ? (
-                <View style={styles.emptyFavoritesContainer}>
-                  <Text style={styles.emptyFavoritesTitle}>Loading...</Text>
+                <View style={favoritesScreenStyles.emptyFavoritesContainer}>
+                  <Text style={favoritesScreenStyles.emptyFavoritesTitle}>Loading...</Text>
                 </View>
               ) : favorites.length === 0 ? (
-                <View style={styles.emptyFavoritesContainer}>
-                  <Text style={styles.emptyFavoritesTitle}>No Favorite Spots</Text>
-                  <Text style={styles.emptyFavoritesMessage}>
+                <View style={favoritesScreenStyles.emptyFavoritesContainer}>
+                  <Text style={favoritesScreenStyles.emptyFavoritesTitle}>No Favorite Spots</Text>
+                  <Text style={favoritesScreenStyles.emptyFavoritesMessage}>
                     You haven't added any parking spots to your favorites yet.
                   </Text>
-                  <Text style={styles.emptyFavoritesSubMessage}>
+                  <Text style={favoritesScreenStyles.emptyFavoritesSubMessage}>
                     Book a parking spot and add it to favorites to see it here.
                   </Text>
                 </View>
               ) : (
                 favorites.map((favorite, index) => (
-                <View key={favorite.favorites_id} style={styles.parkingCard}>
-                  <View style={styles.locationHeader}>
-                    <View style={styles.locationTextContainer}>
-                      <Text style={styles.parkingLocation}>{favorite.parking_area_name}</Text>
-                      <Text style={styles.parkingSpotId}>{favorite.spot_number} ({favorite.spot_type})</Text>
+                <View key={favorite.favorites_id} style={favoritesScreenStyles.parkingCard}>
+                  <View style={favoritesScreenStyles.locationHeader}>
+                    <View style={favoritesScreenStyles.locationTextContainer}>
+                      <Text style={favoritesScreenStyles.parkingLocation}>{favorite.parking_area_name}</Text>
+                      <Text style={favoritesScreenStyles.parkingSpotId}>{favorite.spot_number} ({favorite.spot_type})</Text>
                     </View>
-                    <Image source={require('../assets/img/fulogofinal.png')} style={styles.logoIcon} />
+                    <Image source={require('../assets/img/fulogofinal.png')} style={favoritesScreenStyles.logoIcon} />
                   </View>
-                  <Text style={styles.parkingLabel}>Location</Text>
-                  <View style={styles.timeSlotContainer}>
-                    <Text style={styles.parkingTime}>{favorite.location}</Text>
+                  <Text style={favoritesScreenStyles.parkingLabel}>Location</Text>
+                  <View style={favoritesScreenStyles.timeSlotContainer}>
+                    <Text style={favoritesScreenStyles.parkingTime}>{favorite.location}</Text>
                   </View>
-                  <View style={styles.parkingStatusContainer}>
+                  <View style={favoritesScreenStyles.parkingStatusContainer}>
                     <Text style={[
-                      favorite.spot_status === 'free' ? styles.availableStatus : styles.occupiedStatus
+                      favorite.spot_status === 'free' ? favoritesScreenStyles.availableStatus : favoritesScreenStyles.occupiedStatus
                     ]}>
                       {favorite.spot_status.toUpperCase()}
                     </Text>
-                    <View style={styles.parkingActionsContainer}>
+                    <View style={favoritesScreenStyles.parkingActionsContainer}>
                       <TouchableOpacity 
-                        style={styles.bookButton}
+                        style={favoritesScreenStyles.bookButton}
                         onPress={() => handleBookSpot(favorite)}
                       >
-                        <Text style={styles.bookButtonText}>BOOK</Text>
+                        <Text style={favoritesScreenStyles.bookButtonText}>BOOK</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
-                        style={styles.removeButton}
+                        style={favoritesScreenStyles.removeButton}
                         onPress={() => handleRemoveFavorite(favorite.parking_spot_id)}
                       >
                         <SvgXml 
@@ -491,17 +499,17 @@ const FavoritesScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={handleCloseVehicleSelectionModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.vehicleSelectionModalContainer}>
-            <View style={styles.vehicleModalHeader}>
-              <Text style={styles.vehicleModalTitle}>Select Vehicle for Reservation</Text>
+        <View style={favoritesScreenStyles.modalOverlay}>
+          <View style={favoritesScreenStyles.vehicleSelectionModalContainer}>
+            <View style={favoritesScreenStyles.vehicleModalHeader}>
+              <Text style={favoritesScreenStyles.vehicleModalTitle}>Select Vehicle for Reservation</Text>
               <TouchableOpacity onPress={handleCloseVehicleSelectionModal}>
                 <Ionicons name="close" size={24} color="#8A0000" />
               </TouchableOpacity>
             </View>
             
-            <View style={styles.vehicleTypeInfoContainer}>
-              <Text style={styles.vehicleTypeInfoText}>
+            <View style={favoritesScreenStyles.vehicleTypeInfoContainer}>
+              <Text style={favoritesScreenStyles.vehicleTypeInfoText}>
                 {selectedSpotForBooking 
                   ? `💡 Only vehicles compatible with ${selectedSpotForBooking.spot_type} spots are shown`
                   : '💡 Select a vehicle to book a parking spot'
@@ -510,11 +518,11 @@ const FavoritesScreen: React.FC = () => {
             </View>
             
             {getCompatibleVehicles().length === 0 ? (
-              <View style={styles.noCompatibleVehiclesContainer}>
-                <Text style={styles.noCompatibleVehiclesText}>
+              <View style={favoritesScreenStyles.noCompatibleVehiclesContainer}>
+                <Text style={favoritesScreenStyles.noCompatibleVehiclesText}>
                   No vehicles compatible with this parking spot type
                 </Text>
-                <Text style={styles.noCompatibleVehiclesSubtext}>
+                <Text style={favoritesScreenStyles.noCompatibleVehiclesSubtext}>
                   Add a {selectedSpotForBooking?.spot_type || 'compatible'} vehicle to your account
                 </Text>
               </View>
@@ -522,8 +530,8 @@ const FavoritesScreen: React.FC = () => {
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
-                style={styles.vehicleSelectionScroll}
-                contentContainerStyle={styles.vehicleSelectionScrollContent}
+                style={favoritesScreenStyles.vehicleSelectionScroll}
+                contentContainerStyle={favoritesScreenStyles.vehicleSelectionScrollContent}
                 onScroll={handleVehicleScroll}
                 scrollEventThrottle={16}
               >
@@ -531,22 +539,22 @@ const FavoritesScreen: React.FC = () => {
                   <TouchableOpacity
                     key={vehicle.id}
                     style={[
-                      styles.vehicleSelectionCard,
-                      selectedVehicle === vehicle.id.toString() && styles.vehicleSelectionCardSelected
+                      favoritesScreenStyles.vehicleSelectionCard,
+                      selectedVehicle === vehicle.id.toString() && favoritesScreenStyles.vehicleSelectionCardSelected
                     ]}
                     onPress={() => handleSelectVehicle(vehicle.id.toString())}
                   >
-                    <View style={styles.vehicleSelectionIconContainer}>
+                    <View style={favoritesScreenStyles.vehicleSelectionIconContainer}>
                       <SvgXml xml={getVehicleIcon(vehicle.vehicle_type)} width={getResponsiveSize(40)} height={getResponsiveSize(40)} />
                     </View>
-                    <Text style={styles.vehicleSelectionLabel}>Brand and Model</Text>
-                    <Text style={styles.vehicleSelectionValue}>{vehicle.brand || 'N/A'}</Text>
-                    <Text style={styles.vehicleSelectionLabel}>Vehicle Type</Text>
-                    <Text style={styles.vehicleSelectionValue}>{vehicle.vehicle_type}</Text>
+                    <Text style={favoritesScreenStyles.vehicleSelectionLabel}>Brand and Model</Text>
+                    <Text style={favoritesScreenStyles.vehicleSelectionValue}>{vehicle.brand || 'N/A'}</Text>
+                    <Text style={favoritesScreenStyles.vehicleSelectionLabel}>Vehicle Type</Text>
+                    <Text style={favoritesScreenStyles.vehicleSelectionValue}>{vehicle.vehicle_type}</Text>
                     {vehicle.plate_number && (
                       <>
-                        <Text style={styles.vehicleSelectionLabel}>Plate Number</Text>
-                        <Text style={styles.vehicleSelectionValue}>{vehicle.plate_number}</Text>
+                        <Text style={favoritesScreenStyles.vehicleSelectionLabel}>Plate Number</Text>
+                        <Text style={favoritesScreenStyles.vehicleSelectionValue}>{vehicle.plate_number}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -555,11 +563,11 @@ const FavoritesScreen: React.FC = () => {
             )}
             
             {/* Progress Indicator */}
-            <View style={styles.vehicleSelectionProgressContainer}>
-              <View style={styles.vehicleSelectionProgressTrack}>
+            <View style={favoritesScreenStyles.vehicleSelectionProgressContainer}>
+              <View style={favoritesScreenStyles.vehicleSelectionProgressTrack}>
                 <Animated.View 
                   style={[
-                    styles.vehicleSelectionProgressHandle,
+                    favoritesScreenStyles.vehicleSelectionProgressHandle,
                     {
                       left: vehicleScrollProgress.interpolate({
                         inputRange: [0, 1],
@@ -574,13 +582,13 @@ const FavoritesScreen: React.FC = () => {
 
             <TouchableOpacity 
               style={[
-                styles.vehicleSelectionBookNowButton,
-                (!selectedVehicle || isBooking || getCompatibleVehicles().length === 0) && styles.vehicleSelectionBookNowButtonDisabled
+                favoritesScreenStyles.vehicleSelectionBookNowButton,
+                (!selectedVehicle || isBooking || getCompatibleVehicles().length === 0) && favoritesScreenStyles.vehicleSelectionBookNowButtonDisabled
               ]}
               onPress={handleVehicleBookNow}
               disabled={!selectedVehicle || isBooking || getCompatibleVehicles().length === 0}
             >
-              <Text style={styles.vehicleSelectionBookNowButtonText}>
+              <Text style={favoritesScreenStyles.vehicleSelectionBookNowButtonText}>
                 {isBooking ? 'Booking...' : 
                  getCompatibleVehicles().length === 0 ? 'No Compatible Vehicles' : 'Book Now'}
               </Text>
@@ -596,42 +604,42 @@ const FavoritesScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setShowVehicleMismatchModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.mismatchModalContainer}>
-            <View style={styles.mismatchModalHeader}>
-              <Text style={styles.mismatchModalTitle}>🚗 Vehicle Type Mismatch</Text>
+        <View style={favoritesScreenStyles.modalOverlay}>
+          <View style={favoritesScreenStyles.mismatchModalContainer}>
+            <View style={favoritesScreenStyles.mismatchModalHeader}>
+              <Text style={favoritesScreenStyles.mismatchModalTitle}>🚗 Vehicle Type Mismatch</Text>
               <TouchableOpacity onPress={() => setShowVehicleMismatchModal(false)}>
                 <Ionicons name="close" size={24} color="#8A0000" />
               </TouchableOpacity>
             </View>
             
-            <View style={styles.mismatchContent}>
-              <Text style={styles.mismatchMessage}>
+            <View style={favoritesScreenStyles.mismatchContent}>
+              <Text style={favoritesScreenStyles.mismatchMessage}>
                 Oops! There's a mismatch between your vehicle and this parking spot.
               </Text>
               
-              <View style={styles.mismatchDetails}>
-                <View style={styles.mismatchItem}>
-                  <Text style={styles.mismatchLabel}>Your Vehicle:</Text>
-                  <Text style={styles.mismatchValue}>{mismatchData?.vehicleType || 'Unknown'}</Text>
+              <View style={favoritesScreenStyles.mismatchDetails}>
+                <View style={favoritesScreenStyles.mismatchItem}>
+                  <Text style={favoritesScreenStyles.mismatchLabel}>Your Vehicle:</Text>
+                  <Text style={favoritesScreenStyles.mismatchValue}>{mismatchData?.vehicleType || 'Unknown'}</Text>
                 </View>
                 
-                <View style={styles.mismatchItem}>
-                  <Text style={styles.mismatchLabel}>Spot Type:</Text>
-                  <Text style={styles.mismatchValue}>{mismatchData?.spotType || 'Unknown'}</Text>
+                <View style={favoritesScreenStyles.mismatchItem}>
+                  <Text style={favoritesScreenStyles.mismatchLabel}>Spot Type:</Text>
+                  <Text style={favoritesScreenStyles.mismatchValue}>{mismatchData?.spotType || 'Unknown'}</Text>
                 </View>
               </View>
               
-              <Text style={styles.mismatchSuggestion}>
+              <Text style={favoritesScreenStyles.mismatchSuggestion}>
                 💡 Try selecting a different vehicle or choose a different parking spot that matches your vehicle type.
               </Text>
             </View>
             
             <TouchableOpacity 
-              style={styles.mismatchCloseButton}
+              style={favoritesScreenStyles.mismatchCloseButton}
               onPress={() => setShowVehicleMismatchModal(false)}
             >
-              <Text style={styles.mismatchCloseButtonText}>Got it!</Text>
+              <Text style={favoritesScreenStyles.mismatchCloseButtonText}>Got it!</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -640,557 +648,6 @@ const FavoritesScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#383838',
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  backgroundSection: {
-    height: screenHeight * 0.3,
-    position: 'relative',
-  },
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-  },
-  backgroundOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  profileCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'white',
-    borderTopLeftRadius: getResponsiveSize(25),
-    borderTopRightRadius: getResponsiveSize(25),
-    paddingTop: getResponsivePadding(25),
-    paddingBottom: getResponsivePadding(35),
-    paddingHorizontal: getResponsivePadding(20),
-    height: screenHeight * 0.7, // Fixed height - 70% of screen height
-    zIndex: 2,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -5,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: getResponsiveSize(10),
-    elevation: 10,
-  },
-  profileCardScroll: {
-    flex: 1,
-  },
-  fixedProfileSection: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(30),
-  },
-  profilePictureContainer: {
-    position: 'relative',
-    marginTop: -getResponsiveSize(70),
-    backgroundColor: 'transparent',
-    borderRadius: getResponsiveSize(90),
-    width: getResponsiveSize(180),
-    height: getResponsiveSize(180),
-    borderWidth: getResponsiveSize(3),
-    borderColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profilePicture: {
-    backgroundColor: '#8A0000',
-    borderWidth: 3,
-    borderColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInitials: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  userInfoContainer: {
-    alignItems: 'center',
-    marginTop: getResponsiveSize(15),
-  },
-  userName: {
-    fontSize: getResponsiveFontSize(24),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(5),
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
-  userEmail: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    textAlign: 'center',
-  },
-  spotsContainer: {
-    flex: 1,
-  },
-  spotsTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(20),
-  },
-  parkingCard: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#8A0000',
-    borderRadius: 12,
-    padding: getResponsivePadding(16),
-    marginBottom: getResponsiveMargin(15),
-    position: 'relative',
-    shadowColor: '#8A0000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: getResponsiveSize(4),
-    elevation: 3,
-  },
-  locationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: getResponsiveMargin(8),
-  },
-  locationTextContainer: {
-    flex: 1,
-  },
-  parkingLocation: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#6B7280',
-    marginBottom: getResponsiveMargin(4),
-  },
-  parkingSpotId: {
-    fontSize: getResponsiveFontSize(18),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(8),
-  },
-  logoIcon: {
-    width: getResponsiveSize(60),
-    height: getResponsiveSize(60),
-    resizeMode: 'contain',
-  },
-  parkingLabel: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#6B7280',
-    marginBottom: getResponsiveMargin(4),
-  },
-  timeSlotContainer: {
-    marginBottom: getResponsiveMargin(8),
-  },
-  parkingTime: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#1F2937',
-    flex: 1,
-  },
-  parkingPrice: {
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: getResponsiveMargin(12),
-  },
-  parkingStatusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  parkingActionsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  removeButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#FFE5E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  availableStatus: {
-    fontSize: getResponsiveFontSize(12),
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  occupiedStatus: {
-    fontSize: getResponsiveFontSize(12),
-    fontWeight: 'bold',
-    color: '#8A0000',
-  },
-  bookButton: {
-    backgroundColor: '#8A0000',
-    paddingHorizontal: getResponsivePadding(16),
-    paddingVertical: getResponsivePadding(8),
-    borderRadius: 6,
-  },
-  bookButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(12),
-    fontWeight: 'bold',
-  },
-  // Vehicle Selection Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  vehicleSelectionModalContainer: {
-    backgroundColor: 'white',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(24),
-    margin: getResponsiveMargin(20),
-    maxHeight: '80%',
-    width: '90%',
-    alignSelf: 'center',
-  },
-  vehicleModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(20),
-  },
-  vehicleModalTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#333333',
-    flex: 1,
-  },
-  vehicleCardsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: getResponsiveMargin(20),
-  },
-  vehicleCard: {
-    backgroundColor: 'white',
-    borderRadius: getResponsiveSize(12),
-    padding: getResponsivePadding(16),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: getResponsiveMargin(4),
-    minHeight: getResponsiveSize(200),
-  },
-  selectedVehicleCard: {
-    borderWidth: 3,
-    borderColor: '#8A0000',
-  },
-  vehicleIconContainer: {
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(12),
-    marginBottom: getResponsiveMargin(12),
-    width: getResponsiveSize(48),
-    height: getResponsiveSize(48),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  vehicleBrandLabel: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#999999',
-    marginBottom: getResponsiveMargin(4),
-  },
-  vehicleBrand: {
-    fontSize: getResponsiveFontSize(14),
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: getResponsiveMargin(8),
-    textAlign: 'center',
-  },
-  vehicleDisplayLabel: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#999999',
-    marginBottom: getResponsiveMargin(4),
-  },
-  vehicleDisplayName: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#333333',
-    marginBottom: getResponsiveMargin(8),
-  },
-  vehiclePlateLabel: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#999999',
-    marginBottom: getResponsiveMargin(4),
-  },
-  vehiclePlateNumber: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#333333',
-  },
-  progressIndicatorContainer: {
-    marginBottom: getResponsiveMargin(20),
-  },
-  progressBar: {
-    height: getResponsiveSize(4),
-    backgroundColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(2),
-    overflow: 'hidden',
-  },
-  progressHandle: {
-    position: 'absolute',
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(8),
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(4),
-    top: getResponsiveSize(-2),
-  },
-  vehicleSelectionScroll: {
-    marginHorizontal: -getResponsivePadding(24),
-  },
-  vehicleSelectionScrollContent: {
-    paddingHorizontal: getResponsivePadding(24),
-  },
-  bookNowButton: {
-    backgroundColor: '#8A0000',
-    paddingVertical: getResponsivePadding(16),
-    paddingHorizontal: getResponsivePadding(24),
-    borderRadius: getResponsiveSize(8),
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(16),
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bookNowButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(18),
-    fontWeight: 'bold',
-  },
-  bookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-  emptyFavoritesContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: getResponsivePadding(40),
-    paddingHorizontal: getResponsivePadding(20),
-  },
-  emptyFavoritesTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(12),
-  },
-  emptyFavoritesMessage: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(8),
-    lineHeight: 24,
-  },
-  emptyFavoritesSubMessage: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  // Vehicle Mismatch Modal Styles
-  mismatchModalContainer: {
-    backgroundColor: 'white',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(24),
-    margin: getResponsiveMargin(20),
-    maxWidth: '90%',
-    alignSelf: 'center',
-  },
-  mismatchModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(20),
-  },
-  mismatchModalTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    flex: 1,
-  },
-  mismatchContent: {
-    marginBottom: getResponsiveMargin(24),
-  },
-  mismatchMessage: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(20),
-    lineHeight: 24,
-  },
-  mismatchDetails: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(16),
-    marginBottom: getResponsiveMargin(16),
-  },
-  mismatchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(8),
-  },
-  mismatchLabel: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    fontWeight: '500',
-  },
-  mismatchValue: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#8A0000',
-    fontWeight: 'bold',
-  },
-  mismatchSuggestion: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    lineHeight: 20,
-  },
-  mismatchCloseButton: {
-    backgroundColor: '#8A0000',
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(24),
-    borderRadius: getResponsiveSize(8),
-    alignItems: 'center',
-  },
-  mismatchCloseButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-  },
-  // Vehicle Selection Modal Styles (from HomeScreen)
-  vehicleTypeInfoContainer: {
-    backgroundColor: '#F0F8FF',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(12),
-    marginBottom: getResponsiveMargin(16),
-    borderLeftWidth: 4,
-    borderLeftColor: '#8A0000',
-  },
-  vehicleTypeInfoText: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#4A5568',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  vehicleSelectionCard: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#8A0000',
-    borderRadius: getResponsiveSize(12),
-    padding: getResponsivePadding(16),
-    marginRight: getResponsiveMargin(12),
-    width: getResponsiveSize(160),
-    minHeight: getResponsiveSize(200),
-  },
-  vehicleSelectionCardSelected: {
-    borderWidth: 3,
-    borderColor: '#8A0000',
-  },
-  vehicleSelectionIconContainer: {
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(12),
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(12),
-    width: getResponsiveSize(60),
-    height: getResponsiveSize(60),
-    justifyContent: 'center',
-    alignSelf: 'center',
-  },
-  vehicleSelectionLabel: {
-    fontSize: getResponsiveFontSize(10),
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(2),
-  },
-  vehicleSelectionValue: {
-    fontSize: getResponsiveFontSize(12),
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: getResponsiveMargin(6),
-  },
-  vehicleSelectionProgressContainer: {
-    marginVertical: getResponsiveMargin(20),
-    alignItems: 'center',
-  },
-  vehicleSelectionProgressTrack: {
-    width: '100%',
-    height: getResponsiveSize(4),
-    backgroundColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(2),
-    position: 'relative',
-  },
-  vehicleSelectionProgressHandle: {
-    position: 'absolute',
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(8),
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(4),
-    top: getResponsiveSize(-2),
-  },
-  vehicleSelectionBookNowButton: {
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(16),
-    paddingHorizontal: getResponsivePadding(32),
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  vehicleSelectionBookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-  vehicleSelectionBookNowButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-  },
-  // No Compatible Vehicles Styles
-  noCompatibleVehiclesContainer: {
-    padding: getResponsivePadding(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noCompatibleVehiclesText: {
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(8),
-  },
-  noCompatibleVehiclesSubtext: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: getResponsiveFontSize(20),
-  },
-});
+// Styles are now in favoritesScreenStyles.ts
 
 export default FavoritesScreen;

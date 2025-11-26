@@ -420,8 +420,6 @@ const ActiveParkingScreen: React.FC = () => {
       <View style={activeParkingScreenStyles.container}>
         <SharedHeader 
           title="Active Parking"
-          rightIcon="add"
-          onRightPress={() => {}}
         />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#007AFF" />
@@ -439,8 +437,6 @@ const ActiveParkingScreen: React.FC = () => {
       <View style={activeParkingScreenStyles.container}>
         <SharedHeader 
           title="Active Parking"
-          rightIcon="add"
-          onRightPress={() => {}}
         />
         <View style={activeParkingScreenStyles.emptyStateContainer}>
           <Text style={activeParkingScreenStyles.emptyStateTitle}>No Active Parking Session</Text>
@@ -465,8 +461,6 @@ const ActiveParkingScreen: React.FC = () => {
     <View style={activeParkingScreenStyles.container}>
       <SharedHeader 
         title="Active Parking"
-        rightIcon="add"
-        onRightPress={() => {}}
       />
 
       <View style={activeParkingScreenStyles.content}>
@@ -552,13 +546,13 @@ const ActiveParkingScreen: React.FC = () => {
                         parkingSpot: bookingData.parkingSlot.spotNumber,
                         timestamp: bookingData.timestamps.startTime
                       })}
-                      size={160}
+                      size={240}
                       color="black"
                       backgroundColor="white"
-                      logoSize={22}
+                      logoSize={30}
                       logoMargin={2}
-                      logoBorderRadius={11}
-                      quietZone={8}
+                      logoBorderRadius={15}
+                      quietZone={10}
                     />
                   </View>
                 ) : (
@@ -771,30 +765,6 @@ const ActiveParkingScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        {/* Test Button - Simple + button */}
-        {activeTab === 'ticket' && (
-          <TouchableOpacity
-            style={{
-              position: 'absolute',
-              top: 20,
-              right: 20,
-              width: 50,
-              height: 50,
-              borderRadius: 25,
-              backgroundColor: '#007AFF',
-              justifyContent: 'center',
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
-            }}
-            onPress={() => setShowTestModal(true)}
-          >
-            <Text style={{ color: 'white', fontSize: 24, fontWeight: 'bold' }}>+</Text>
-          </TouchableOpacity>
-        )}
 
 
         {/* Test Modal */}

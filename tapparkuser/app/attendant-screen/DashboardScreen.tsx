@@ -549,8 +549,8 @@ const DashboardScreen: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'free':
-      case 'active': // Database uses 'free' for vacant spots
+      case 'available':
+      case 'active': // Database uses 'available' for vacant spots
         return '#60FF84'; // Green
       case 'occupied':
         return '#FF6C6C'; // Red
@@ -603,8 +603,12 @@ const DashboardScreen: React.FC = () => {
           vehicleType.id === 'motorcycle' ? motorcycleIconSvg :
           bikeIconSvg
         }
-        width={screenDimensions.isTablet ? 50 : 40}
-        height={screenDimensions.isTablet ? 50 : 40}
+        width={screenDimensions.isLandscape 
+          ? (screenDimensions.isTablet ? 60 : 50)
+          : (screenDimensions.isTablet ? 50 : 40)}
+        height={screenDimensions.isLandscape 
+          ? (screenDimensions.isTablet ? 60 : 50)
+          : (screenDimensions.isTablet ? 50 : 40)}
       />
       <Text style={[styles.vehicleTypeName, { fontSize: getAdaptiveFontSize(screenDimensions, 16) }]}>{vehicleType.name}</Text>
       <View style={styles.capacityInfo}>
@@ -899,7 +903,11 @@ const DashboardScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { fontSize: getAdaptiveFontSize(screenDimensions, 16) }]}>Vehicle Types</Text>
           <View style={[
             styles.vehicleTypesContainer,
-            screenDimensions.isTablet && screenDimensions.isLandscape ? { flexDirection: 'row', justifyContent: 'space-around' } : styles.vehicleTypesContainer
+            screenDimensions.isLandscape ? { 
+              flexDirection: 'row', 
+              justifyContent: 'flex-start',
+              gap: getAdaptiveSpacing(screenDimensions, 8)
+            } : {}
           ]}>
             {vehicleTypes.map(renderVehicleTypeCard)}
           </View>

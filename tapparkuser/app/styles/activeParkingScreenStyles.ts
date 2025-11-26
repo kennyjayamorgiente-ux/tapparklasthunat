@@ -132,29 +132,31 @@ export const activeParkingScreenStyles = StyleSheet.create({
   ticketContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: getResponsiveSize(12),
-    padding: getResponsivePadding(15),
+    padding: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(30),
     borderWidth: 1,
     borderColor: '#8A0000',
     flex: 1,
+    minHeight: getResponsiveSize(650),
   },
   qrSection: {
     alignItems: 'center',
-    marginBottom: getResponsivePadding(60),
-    marginTop: getResponsivePadding(60),
+    marginBottom: getResponsivePadding(100),
+    marginTop: getResponsivePadding(50),
     flex: 1,
     justifyContent: 'center',
   },
   qrContainer: {
     backgroundColor: '#FFFFFF',
-    padding: getResponsivePadding(15),
+    padding: getResponsivePadding(20),
     borderRadius: getResponsiveSize(8),
+    marginTop: getResponsiveMargin(50),
     marginBottom: getResponsiveMargin(12),
     borderWidth: 1,
     borderColor: '#E0E0E0',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: getResponsiveSize(200),
-    maxHeight: getResponsiveSize(220),
+    minHeight: getResponsiveSize(250),
   },
   qrInstruction: {
     fontSize: getResponsiveFontSize(16),
@@ -236,8 +238,8 @@ export const activeParkingScreenStyles = StyleSheet.create({
 
   // QR Placeholder Styles for Backend Integration
   qrPlaceholder: {
-    width: isSmallScreen ? getResponsiveSize(160) : getResponsiveSize(200),
-    height: isSmallScreen ? getResponsiveSize(160) : getResponsiveSize(200),
+    width: isSmallScreen ? getResponsiveSize(200) : getResponsiveSize(240),
+    height: isSmallScreen ? getResponsiveSize(200) : getResponsiveSize(240),
     backgroundColor: '#F0F0F0',
     borderRadius: getResponsiveSize(12),
     borderWidth: 2,

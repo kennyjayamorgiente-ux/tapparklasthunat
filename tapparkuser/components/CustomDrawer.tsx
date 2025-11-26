@@ -6,11 +6,13 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 import {
   whiteHomeIconSvg,
   maroonProfileIconSvg,
@@ -68,6 +70,7 @@ interface CustomDrawerProps {
 const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const router = useRouter();
+  const { showLoading, hideLoading } = useLoading();
   const pathname = usePathname();
   
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -145,15 +148,21 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
 
   const handleNavigation = React.useCallback((route: string) => {
     onClose();
+    showLoading();
     setTimeout(() => {
       router.push(route as any);
+      // Hide loading after navigation completes (give it time to render)
+      setTimeout(() => {
+        hideLoading();
+      }, 300);
     }, 100);
-  }, [router, onClose]);
+  }, [router, onClose, showLoading, hideLoading]);
 
   const { logout } = useAuth();
   
   const handleSignOut = React.useCallback(async () => {
     onClose();
+    showLoading('Signing out...');
     try {
       await logout();
       router.replace('/screens/LoginScreen');
@@ -161,8 +170,12 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
       console.error('Logout error:', error);
       // Still navigate to login even if logout fails
       router.replace('/screens/LoginScreen');
+    } finally {
+      setTimeout(() => {
+        hideLoading();
+      }, 300);
     }
-  }, [router, onClose, logout]);
+  }, [router, onClose, logout, showLoading, hideLoading]);
 
   const toggleTheme = React.useCallback(() => {
     setIsDarkMode(!isDarkMode);
@@ -191,6 +204,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
 
   return (
     <View style={styles.overlay}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Animated.View
         style={[
           styles.backdrop,
@@ -340,12 +354,13 @@ const styles = StyleSheet.create({
   },
   headerSafeArea: {
     backgroundColor: 'transparent',
+    marginBottom: 0,
   },
   header: {
     backgroundColor: '#8A0000',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    marginBottom: 20,
+    marginBottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -369,6 +384,7 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     paddingHorizontal: 0,
+    marginTop: 20,
   },
   menuItemWrapper: {
     flexDirection: 'row',

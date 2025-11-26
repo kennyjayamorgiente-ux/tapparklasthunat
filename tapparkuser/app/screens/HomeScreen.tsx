@@ -12,7 +12,8 @@ import {
   PanResponder, 
   Modal, 
   ActivityIndicator, 
-  Alert, 
+  Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -22,6 +23,7 @@ import { Image as ExpoImage } from 'expo-image';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDrawer } from '../../contexts/DrawerContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import ApiService from '../../services/api';
 import { 
   lineGraphIconSvg, 
@@ -32,6 +34,7 @@ import {
   whiteMotorIconSvg,
   whiteEbikeIconSvg
 } from '../assets/icons/index2';
+import { homeScreenStyles } from '../styles/homeScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -81,6 +84,7 @@ const getResponsiveMargin = (baseMargin: number) => {
 export default function HomeScreen() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toggleDrawer } = useDrawer();
+  const { showLoading, hideLoading } = useLoading();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -420,6 +424,7 @@ export default function HomeScreen() {
               text: 'OK',
               onPress: () => {
                 // Navigate to ActiveParkingScreen with booking details
+                showLoading('Loading parking session...');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -427,6 +432,7 @@ export default function HomeScreen() {
                     sessionId: response.data.reservationId
                   }
                 });
+                setTimeout(() => hideLoading(), 300);
                 setIsBookingModalVisible(false);
                 setSelectedVehicleForParking(null);
                 setSelectedParkingArea(null);
@@ -518,6 +524,7 @@ export default function HomeScreen() {
               text: 'OK',
               onPress: () => {
                 // Navigate to ActiveParkingScreen with complete booking details
+                showLoading('Loading parking session...');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -534,6 +541,7 @@ export default function HomeScreen() {
                     status: bookingDetails.status
                   }
                 });
+                setTimeout(() => hideLoading(), 300);
                 setIsBookingModalVisible(false);
                 setSelectedVehicleForParking(null);
                 setSelectedParkingArea(null);
@@ -690,6 +698,7 @@ export default function HomeScreen() {
                   status: response.data.bookingDetails.status
                 });
                 
+                showLoading('Loading parking session...');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -706,6 +715,7 @@ export default function HomeScreen() {
                     status: response.data.bookingDetails.status
                   }
                 });
+                setTimeout(() => hideLoading(), 300);
                 // Reset all states
                 setSelectedSpotForBooking(null);
                 setSelectedVehicleForParking(null);
@@ -821,7 +831,8 @@ export default function HomeScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <View style={homeScreenStyles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={true} />
       <SafeAreaViewContext style={styles.headerSafeArea} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity 
@@ -833,64 +844,68 @@ export default function HomeScreen() {
           
           <Text style={styles.headerTitle}>TapPark</Text>
           
-          <TouchableOpacity onPress={() => router.push('/ProfileScreen')}>
+          <TouchableOpacity onPress={() => {
+            showLoading();
+            router.push('/ProfileScreen');
+            setTimeout(() => hideLoading(), 300);
+          }}>
             <ProfilePicture size={36} />
           </TouchableOpacity>
         </View>
       </SafeAreaViewContext>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={homeScreenStyles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Main Slogan */}
-        <View style={styles.sloganSection}>
-          <Text style={styles.parkingText}>PARKING</Text>
-          <View style={styles.madeEasyContainer}>
-            <Text style={styles.madeText}>made </Text>
-            <Text style={styles.easyText}>easy!</Text>
+        <View style={homeScreenStyles.sloganSection}>
+          <Text style={homeScreenStyles.parkingText}>PARKING</Text>
+          <View style={homeScreenStyles.madeEasyContainer}>
+            <Text style={homeScreenStyles.madeText}>made </Text>
+            <Text style={homeScreenStyles.easyText}>easy!</Text>
           </View>
         </View>
 
         {/* Registered Vehicle Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+        <View style={homeScreenStyles.section}>
+          <View style={homeScreenStyles.sectionHeader}>
             <SvgXml xml={lineGraphIconSvg} width={16} height={16} />
-            <Text style={styles.sectionTitle}>Registered Vehicle</Text>
+            <Text style={homeScreenStyles.sectionTitle}>Registered Vehicle</Text>
           </View>
           
           {isLoadingVehicles ? (
-            <View style={styles.loadingContainer}>
+            <View style={homeScreenStyles.loadingContainer}>
               <ActivityIndicator size="large" color="#8A0000" />
-              <Text style={styles.loadingText}>Loading vehicles...</Text>
+              <Text style={homeScreenStyles.loadingText}>Loading vehicles...</Text>
             </View>
           ) : vehicles.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateText}>No vehicles registered yet</Text>
-              <Text style={styles.emptyStateSubtext}>Add your first vehicle to get started</Text>
-              <TouchableOpacity style={styles.addVehicleButton} onPress={handleAddVehicle}>
-                <Text style={styles.addVehicleButtonText}>Add Vehicle</Text>
+            <View style={homeScreenStyles.emptyStateContainer}>
+              <Text style={homeScreenStyles.emptyStateText}>No vehicles registered yet</Text>
+              <Text style={homeScreenStyles.emptyStateSubtext}>Add your first vehicle to get started</Text>
+              <TouchableOpacity style={homeScreenStyles.addVehicleButton} onPress={handleAddVehicle}>
+                <Text style={homeScreenStyles.addVehicleButtonText}>Add Vehicle</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
-              style={styles.horizontalScroll}
-              contentContainerStyle={styles.horizontalScrollContent}
+              style={homeScreenStyles.horizontalScroll}
+              contentContainerStyle={homeScreenStyles.horizontalScrollContent}
             >
               {(vehicles || []).map((vehicle, index) => (
-                <TouchableOpacity key={vehicle.id || index} style={styles.vehicleCard} onPress={() => handleVehicleCardPress(vehicle)}>
-                  <View style={styles.vehicleIconContainer}>
+                <TouchableOpacity key={vehicle.id || index} style={homeScreenStyles.vehicleCard} onPress={() => handleVehicleCardPress(vehicle)}>
+                  <View style={homeScreenStyles.vehicleIconContainer}>
                     <SvgXml 
                       xml={getVehicleIcon(vehicle.vehicle_type)} 
                       width={getResponsiveSize(55)} 
                       height={getResponsiveSize(vehicle.vehicle_type.toLowerCase() === 'car' ? 33 : 40)} 
                     />
                   </View>
-                  <Text style={styles.vehicleLabel}>Brand and Model</Text>
-                  <Text style={styles.vehicleValue}>{vehicle.brand || 'N/A'} - N/A</Text>
-                  <Text style={styles.vehicleLabel}>Display Name</Text>
-                  <Text style={styles.vehicleValue}>{vehicle.vehicle_type}</Text>
-                  <Text style={styles.vehicleLabel}>Plate Number</Text>
-                  <Text style={styles.vehicleValue}>{vehicle.plate_number}</Text>
+                  <Text style={homeScreenStyles.vehicleLabel}>Brand and Model</Text>
+                  <Text style={homeScreenStyles.vehicleValue}>{vehicle.brand || 'N/A'} - N/A</Text>
+                  <Text style={homeScreenStyles.vehicleLabel}>Display Name</Text>
+                  <Text style={homeScreenStyles.vehicleValue}>{vehicle.vehicle_type}</Text>
+                  <Text style={homeScreenStyles.vehicleLabel}>Plate Number</Text>
+                  <Text style={homeScreenStyles.vehicleValue}>{vehicle.plate_number}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -898,60 +913,60 @@ export default function HomeScreen() {
         </View>
 
         {/* Frequently Used Parking Space Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+        <View style={homeScreenStyles.section}>
+          <View style={homeScreenStyles.sectionHeader}>
             <SvgXml xml={profitIconSvg} width={16} height={16} />
-            <Text style={styles.sectionTitle}>Frequently used parking space</Text>
+            <Text style={homeScreenStyles.sectionTitle}>Frequently used parking space</Text>
           </View>
           
           <ScrollView 
             ref={scrollViewRef}
             horizontal 
             showsHorizontalScrollIndicator={false}
-            style={styles.horizontalScroll}
-            contentContainerStyle={styles.horizontalScrollContent}
+            style={homeScreenStyles.horizontalScroll}
+            contentContainerStyle={homeScreenStyles.horizontalScrollContent}
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
             {isLoadingFrequentSpots ? (
-              <View style={styles.loadingContainer}>
+              <View style={homeScreenStyles.loadingContainer}>
                 <ActivityIndicator size="large" color="#8A0000" />
-                <Text style={styles.loadingText}>Loading frequent spots...</Text>
+                <Text style={homeScreenStyles.loadingText}>Loading frequent spots...</Text>
               </View>
             ) : frequentSpots.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No frequent parking spots found</Text>
-                <Text style={styles.emptySubtext}>Your frequently used spots will appear here</Text>
+              <View style={homeScreenStyles.emptyContainer}>
+                <Text style={homeScreenStyles.emptyText}>No frequent parking spots found</Text>
+                <Text style={homeScreenStyles.emptySubtext}>Your frequently used spots will appear here</Text>
               </View>
             ) : (
               (frequentSpots || []).map((spot, index) => (
-                <View key={`${spot.parking_spot_id}-${index}`} style={styles.parkingCard}>
-                  <View style={styles.locationHeader}>
-                    <View style={styles.locationTextContainer}>
-                      <Text style={styles.parkingLocation}>{spot.location_name.toUpperCase()}</Text>
-                      <Text style={styles.parkingSpotId}>{generateSpotId(spot.location_name, spot.spot_number)}</Text>
+                <View key={`${spot.parking_spot_id}-${index}`} style={homeScreenStyles.parkingCard}>
+                  <View style={homeScreenStyles.locationHeader}>
+                    <View style={homeScreenStyles.locationTextContainer}>
+                      <Text style={homeScreenStyles.parkingLocation}>{spot.location_name.toUpperCase()}</Text>
+                      <Text style={homeScreenStyles.parkingSpotId}>{generateSpotId(spot.location_name, spot.spot_number)}</Text>
                     </View>
-                    <Image source={getLocationLogo(spot.location_name)} style={styles.logoIcon} />
+                    <Image source={getLocationLogo(spot.location_name)} style={homeScreenStyles.logoIcon} />
                   </View>
-                  <Text style={styles.parkingLabel}>Time Slot</Text>
-                  <View style={styles.timeSlotContainer}>
-                    <Text style={styles.parkingTime}>
+                  <Text style={homeScreenStyles.parkingLabel}>Time Slot</Text>
+                  <View style={homeScreenStyles.timeSlotContainer}>
+                    <Text style={homeScreenStyles.parkingTime}>
                       {spot.current_reservation 
                         ? `${formatTime(spot.current_reservation.start_time)} - ${formatTime(spot.current_reservation.end_time || new Date(Date.now() + 2*60*60*1000).toISOString())}`
                         : 'Available Now'
                       }
                     </Text>
                   </View>
-                  <Text style={styles.parkingPrice}>Used {spot.usage_count} times</Text>
-                  <View style={styles.parkingStatusContainer}>
-                    <Text style={spot.status === 'AVAILABLE' ? styles.availableStatus : styles.occupiedStatus}>
+                  <Text style={homeScreenStyles.parkingPrice}>Used {spot.usage_count} times</Text>
+                  <View style={homeScreenStyles.parkingStatusContainer}>
+                    <Text style={spot.status === 'AVAILABLE' ? homeScreenStyles.availableStatus : homeScreenStyles.occupiedStatus}>
                       {spot.status}
                     </Text>
                     <TouchableOpacity 
-                      style={styles.bookButton}
+                      style={homeScreenStyles.bookButton}
                       onPress={() => handleBookFrequentSpot(spot)}
                     >
-                      <Text style={styles.bookButtonText}>BOOK</Text>
+                      <Text style={homeScreenStyles.bookButtonText}>BOOK</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -961,19 +976,19 @@ export default function HomeScreen() {
           </ScrollView>
 
           {/* See All Spots Button */}
-          <TouchableOpacity style={styles.seeAllButton}>
+          <TouchableOpacity style={homeScreenStyles.seeAllButton}>
             <SvgXml xml={doubleUpIconSvg} width={16} height={16} />
-            <Text style={styles.seeAllText}>See all spots</Text>
+            <Text style={homeScreenStyles.seeAllText}>See all spots</Text>
           </TouchableOpacity>
         </View>
 
         {/* Scroll Indicator Section */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressTrack}>
+        <View style={homeScreenStyles.progressSection}>
+          <View style={homeScreenStyles.progressContainer}>
+            <View style={homeScreenStyles.progressTrack}>
               <Animated.View 
                 style={[
-                  styles.scrollHandle,
+                  homeScreenStyles.scrollHandle,
                   {
                     left: scrollProgress.interpolate({
                       inputRange: [0, 1],
@@ -988,43 +1003,43 @@ export default function HomeScreen() {
         </View>
 
         {/* Select Parking Area Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+        <View style={homeScreenStyles.section}>
+          <View style={homeScreenStyles.sectionHeader}>
             <SvgXml xml={checkboxIconSvg} width={16} height={16} />
-            <Text style={styles.sectionTitle}>Select Parking Area</Text>
+            <Text style={homeScreenStyles.sectionTitle}>Select Parking Area</Text>
           </View>
           
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            style={styles.horizontalScroll}
-            contentContainerStyle={styles.horizontalScrollContent}
+            style={homeScreenStyles.horizontalScroll}
+            contentContainerStyle={homeScreenStyles.horizontalScrollContent}
           >
             {/* Underground Parking */}
             <TouchableOpacity 
-              style={styles.areaCard}
+              style={homeScreenStyles.areaCard}
               onPress={() => handleSelectArea('underground')}
             >
-              <Text style={styles.areaName}>FPA UNDERGROUND PARKING</Text>
-              <Image source={require('../assets/img/fpa-logo.png')} style={styles.areaLogoIcon} />
+              <Text style={homeScreenStyles.areaName}>FPA UNDERGROUND PARKING</Text>
+              <Image source={require('../assets/img/fpa-logo.png')} style={homeScreenStyles.areaLogoIcon} />
             </TouchableOpacity>
 
             {/* Round-About Parking */}
             <TouchableOpacity 
-              style={styles.areaCard}
+              style={homeScreenStyles.areaCard}
               onPress={() => handleSelectArea('roundabout')}
             >
-              <Text style={styles.areaName}>FPA ROUND-ABOUT PARKING</Text>
-              <Image source={require('../assets/img/fpa-logo.png')} style={styles.areaLogoIcon} />
+              <Text style={homeScreenStyles.areaName}>FPA ROUND-ABOUT PARKING</Text>
+              <Image source={require('../assets/img/fpa-logo.png')} style={homeScreenStyles.areaLogoIcon} />
             </TouchableOpacity>
 
             {/* Main Campus Parking */}
             <TouchableOpacity 
-              style={styles.areaCard}
+              style={homeScreenStyles.areaCard}
               onPress={() => handleSelectArea('maincampus')}
             >
-              <Text style={styles.areaName}>MAIN CAMPUS PARKING</Text>
-              <Image source={require('../assets/img/fulogofinal.png')} style={styles.areaLogoIcon} />
+              <Text style={homeScreenStyles.areaName}>MAIN CAMPUS PARKING</Text>
+              <Image source={require('../assets/img/fulogofinal.png')} style={homeScreenStyles.areaLogoIcon} />
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -1038,33 +1053,33 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={handleCloseModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Book a Parking Slot</Text>
-            <Text style={styles.modalSubtitle}>Choose a parking area:</Text>
+        <View style={homeScreenStyles.modalOverlay}>
+          <View style={homeScreenStyles.modalContainer}>
+            <Text style={homeScreenStyles.modalTitle}>Book a Parking Slot</Text>
+            <Text style={homeScreenStyles.modalSubtitle}>Choose a parking area:</Text>
             
             {isLoadingParkingAreas ? (
-              <View style={styles.loadingContainer}>
+              <View style={homeScreenStyles.loadingContainer}>
                 <ActivityIndicator size="large" color="#8A0000" />
-                <Text style={styles.loadingText}>Loading parking areas...</Text>
+                <Text style={homeScreenStyles.loadingText}>Loading parking areas...</Text>
               </View>
             ) : (
-              <View style={styles.parkingAreaButtons}>
+              <View style={homeScreenStyles.parkingAreaButtons}>
                 {(parkingAreas || []).map((area) => (
                   <TouchableOpacity 
                     key={area.id}
-                    style={styles.parkingAreaButton}
+                    style={homeScreenStyles.parkingAreaButton}
                     onPress={() => handleParkingAreaSelect(area)}
                   >
-                    <Text style={styles.parkingAreaButtonText}>{area.name}</Text>
-                    <Text style={styles.parkingAreaLocation}>{area.location}</Text>
+                    <Text style={homeScreenStyles.parkingAreaButtonText}>{area.name}</Text>
+                    <Text style={homeScreenStyles.parkingAreaLocation}>{area.location}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
             
-            <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
-              <Text style={styles.closeButtonText}>Close</Text>
+            <TouchableOpacity style={homeScreenStyles.closeButton} onPress={handleCloseModal}>
+              <Text style={homeScreenStyles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1077,32 +1092,32 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={handleCloseBookingModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.bookingModalContainer}>
-            <Text style={styles.bookingModalTitle}>Book a Parking Slot</Text>
-            <Text style={styles.bookingModalText}>
+        <View style={homeScreenStyles.modalOverlay}>
+          <View style={homeScreenStyles.bookingModalContainer}>
+            <Text style={homeScreenStyles.bookingModalTitle}>Book a Parking Slot</Text>
+            <Text style={homeScreenStyles.bookingModalText}>
               An available slot has been automatically assigned for you at {selectedParkingArea?.name}:
             </Text>
-            <Text style={styles.assignedSlotId}>{assignedSlot}</Text>
+            <Text style={homeScreenStyles.assignedSlotId}>{assignedSlot}</Text>
             {assignedSpotDetails && (
-              <Text style={styles.spotTypeText}>
+              <Text style={homeScreenStyles.spotTypeText}>
                 Spot Type: {assignedSpotDetails.spot_type?.charAt(0).toUpperCase() + assignedSpotDetails.spot_type?.slice(1)}
               </Text>
             )}
             
             {isLoadingParkingSpots ? (
-              <View style={styles.loadingContainer}>
+              <View style={homeScreenStyles.loadingContainer}>
                 <ActivityIndicator size="large" color="#8A0000" />
-                <Text style={styles.loadingText}>Assigning parking spot...</Text>
+                <Text style={homeScreenStyles.loadingText}>Assigning parking spot...</Text>
               </View>
             ) : (
-              <TouchableOpacity style={styles.bookNowButton} onPress={handleBookNow}>
-                <Text style={styles.bookNowButtonText}>Book Now</Text>
+              <TouchableOpacity style={homeScreenStyles.bookNowButton} onPress={handleBookNow}>
+                <Text style={homeScreenStyles.bookNowButtonText}>Book Now</Text>
               </TouchableOpacity>
             )}
             
-            <TouchableOpacity style={styles.closeButton} onPress={handleCloseBookingModal}>
-              <Text style={styles.closeButtonText}>Close</Text>
+            <TouchableOpacity style={homeScreenStyles.closeButton} onPress={handleCloseBookingModal}>
+              <Text style={homeScreenStyles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1115,17 +1130,17 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={handleCloseVehicleSelectionModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.vehicleSelectionModalContainer}>
-            <View style={styles.vehicleModalHeader}>
-              <Text style={styles.vehicleModalTitle}>Select Vehicle for Reservation</Text>
+        <View style={homeScreenStyles.modalOverlay}>
+          <View style={homeScreenStyles.vehicleSelectionModalContainer}>
+            <View style={homeScreenStyles.vehicleModalHeader}>
+              <Text style={homeScreenStyles.vehicleModalTitle}>Select Vehicle for Reservation</Text>
               <TouchableOpacity onPress={handleCloseVehicleSelectionModal}>
                 <Ionicons name="close" size={24} color="#8A0000" />
               </TouchableOpacity>
             </View>
             
-            <View style={styles.vehicleTypeInfoContainer}>
-              <Text style={styles.vehicleTypeInfoText}>
+            <View style={homeScreenStyles.vehicleTypeInfoContainer}>
+              <Text style={homeScreenStyles.vehicleTypeInfoText}>
                 {selectedSpotForBooking 
                   ? `💡 Only vehicles compatible with ${selectedSpotForBooking.spot_type} spots are shown`
                   : '💡 Select a vehicle to book a parking spot'
@@ -1134,11 +1149,11 @@ export default function HomeScreen() {
             </View>
             
             {getCompatibleVehicles().length === 0 ? (
-              <View style={styles.noCompatibleVehiclesContainer}>
-                <Text style={styles.noCompatibleVehiclesText}>
+              <View style={homeScreenStyles.noCompatibleVehiclesContainer}>
+                <Text style={homeScreenStyles.noCompatibleVehiclesText}>
                   No vehicles compatible with this parking spot type
                 </Text>
-                <Text style={styles.noCompatibleVehiclesSubtext}>
+                <Text style={homeScreenStyles.noCompatibleVehiclesSubtext}>
                   Add a {selectedSpotForBooking?.spot_type || 'compatible'} vehicle to your account
                 </Text>
               </View>
@@ -1146,8 +1161,8 @@ export default function HomeScreen() {
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
-                style={styles.vehicleSelectionScroll}
-                contentContainerStyle={styles.vehicleSelectionScrollContent}
+                style={homeScreenStyles.vehicleSelectionScroll}
+                contentContainerStyle={homeScreenStyles.vehicleSelectionScrollContent}
                 onScroll={handleVehicleScroll}
                 scrollEventThrottle={16}
               >
@@ -1155,22 +1170,22 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     key={vehicle.id}
                     style={[
-                      styles.vehicleSelectionCard,
-                      selectedVehicle === vehicle.id.toString() && styles.vehicleSelectionCardSelected
+                      homeScreenStyles.vehicleSelectionCard,
+                      selectedVehicle === vehicle.id.toString() && homeScreenStyles.vehicleSelectionCardSelected
                     ]}
                     onPress={() => handleSelectVehicle(vehicle.id.toString())}
                   >
-                    <View style={styles.vehicleSelectionIconContainer}>
+                    <View style={homeScreenStyles.vehicleSelectionIconContainer}>
                       <SvgXml xml={getVehicleIcon(vehicle.vehicle_type)} width={getResponsiveSize(40)} height={getResponsiveSize(40)} />
                     </View>
-                    <Text style={styles.vehicleSelectionLabel}>Brand and Model</Text>
-                    <Text style={styles.vehicleSelectionValue}>{vehicle.brand || 'N/A'}</Text>
-                    <Text style={styles.vehicleSelectionLabel}>Vehicle Type</Text>
-                    <Text style={styles.vehicleSelectionValue}>{vehicle.vehicle_type}</Text>
+                    <Text style={homeScreenStyles.vehicleSelectionLabel}>Brand and Model</Text>
+                    <Text style={homeScreenStyles.vehicleSelectionValue}>{vehicle.brand || 'N/A'}</Text>
+                    <Text style={homeScreenStyles.vehicleSelectionLabel}>Vehicle Type</Text>
+                    <Text style={homeScreenStyles.vehicleSelectionValue}>{vehicle.vehicle_type}</Text>
                     {vehicle.plate_number && (
                       <>
-                        <Text style={styles.vehicleSelectionLabel}>Plate Number</Text>
-                        <Text style={styles.vehicleSelectionValue}>{vehicle.plate_number}</Text>
+                        <Text style={homeScreenStyles.vehicleSelectionLabel}>Plate Number</Text>
+                        <Text style={homeScreenStyles.vehicleSelectionValue}>{vehicle.plate_number}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -1179,11 +1194,11 @@ export default function HomeScreen() {
             )}
 
             {/* Progress Indicator */}
-            <View style={styles.vehicleSelectionProgressContainer}>
-              <View style={styles.vehicleSelectionProgressTrack}>
+            <View style={homeScreenStyles.vehicleSelectionProgressContainer}>
+              <View style={homeScreenStyles.vehicleSelectionProgressTrack}>
                 <Animated.View 
                   style={[
-                    styles.vehicleSelectionProgressHandle,
+                    homeScreenStyles.vehicleSelectionProgressHandle,
                     {
                       left: vehicleScrollProgress.interpolate({
                         inputRange: [0, 1],
@@ -1198,13 +1213,13 @@ export default function HomeScreen() {
 
             <TouchableOpacity 
               style={[
-                styles.vehicleSelectionBookNowButton,
-                (!selectedVehicle || getCompatibleVehicles().length === 0) && styles.vehicleSelectionBookNowButtonDisabled
+                homeScreenStyles.vehicleSelectionBookNowButton,
+                (!selectedVehicle || getCompatibleVehicles().length === 0) && homeScreenStyles.vehicleSelectionBookNowButtonDisabled
               ]}
               onPress={handleVehicleBookNow}
               disabled={!selectedVehicle || getCompatibleVehicles().length === 0}
             >
-              <Text style={styles.vehicleSelectionBookNowButtonText}>
+              <Text style={homeScreenStyles.vehicleSelectionBookNowButtonText}>
                 {getCompatibleVehicles().length === 0 ? 'No Compatible Vehicles' : 'Book Now'}
               </Text>
             </TouchableOpacity>
@@ -1219,42 +1234,42 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={() => setShowVehicleMismatchModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.mismatchModalContainer}>
-            <View style={styles.mismatchModalHeader}>
-              <Text style={styles.mismatchModalTitle}>🚗 Vehicle Type Mismatch</Text>
+        <View style={homeScreenStyles.modalOverlay}>
+          <View style={homeScreenStyles.mismatchModalContainer}>
+            <View style={homeScreenStyles.mismatchModalHeader}>
+              <Text style={homeScreenStyles.mismatchModalTitle}>🚗 Vehicle Type Mismatch</Text>
               <TouchableOpacity onPress={() => setShowVehicleMismatchModal(false)}>
                 <Ionicons name="close" size={24} color="#8A0000" />
               </TouchableOpacity>
             </View>
             
-            <View style={styles.mismatchContent}>
-              <Text style={styles.mismatchMessage}>
+            <View style={homeScreenStyles.mismatchContent}>
+              <Text style={homeScreenStyles.mismatchMessage}>
                 Oops! There's a mismatch between your vehicle and this parking spot.
               </Text>
               
-              <View style={styles.mismatchDetails}>
-                <View style={styles.mismatchItem}>
-                  <Text style={styles.mismatchLabel}>Your Vehicle:</Text>
-                  <Text style={styles.mismatchValue}>{mismatchData?.vehicleType || 'Unknown'}</Text>
+              <View style={homeScreenStyles.mismatchDetails}>
+                <View style={homeScreenStyles.mismatchItem}>
+                  <Text style={homeScreenStyles.mismatchLabel}>Your Vehicle:</Text>
+                  <Text style={homeScreenStyles.mismatchValue}>{mismatchData?.vehicleType || 'Unknown'}</Text>
                 </View>
                 
-                <View style={styles.mismatchItem}>
-                  <Text style={styles.mismatchLabel}>Spot Type:</Text>
-                  <Text style={styles.mismatchValue}>{mismatchData?.spotType || 'Unknown'}</Text>
+                <View style={homeScreenStyles.mismatchItem}>
+                  <Text style={homeScreenStyles.mismatchLabel}>Spot Type:</Text>
+                  <Text style={homeScreenStyles.mismatchValue}>{mismatchData?.spotType || 'Unknown'}</Text>
                 </View>
               </View>
               
-              <Text style={styles.mismatchSuggestion}>
+              <Text style={homeScreenStyles.mismatchSuggestion}>
                 💡 Try selecting a different vehicle or choose a different parking spot that matches your vehicle type.
               </Text>
             </View>
             
             <TouchableOpacity 
-              style={styles.mismatchCloseButton}
+              style={homeScreenStyles.mismatchCloseButton}
               onPress={() => setShowVehicleMismatchModal(false)}
             >
-              <Text style={styles.mismatchCloseButtonText}>Got it!</Text>
+              <Text style={homeScreenStyles.mismatchCloseButtonText}>Got it!</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1264,6 +1279,7 @@ export default function HomeScreen() {
   );
 }
 
+// Only keep unique styles that aren't in homeScreenStyles.ts
 const styles = StyleSheet.create({
   headerSafeArea: {
     backgroundColor: 'transparent',
@@ -1272,7 +1288,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#8A0000',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    marginBottom: 20,
+    marginBottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1294,10 +1310,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-    container: {
-      flex: 1,
-    backgroundColor: 'white',
-  },
   profilePicture: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderWidth: 2,
@@ -1309,688 +1321,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     textAlign: 'center',
-    },
-    scrollView: {
-      flex: 1,
-    },
-    sloganSection: {
-    paddingHorizontal: getResponsivePadding(20),
-    paddingVertical: getResponsivePadding(30),
-      alignItems: 'flex-start',
-    },
-    parkingText: {
-    fontSize: getResponsiveFontSize(36),
-      fontWeight: 'bold',
-      color: '#8A0000',
-    lineHeight: getResponsiveFontSize(42),
-    },
-    madeEasyContainer: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-    },
-    madeText: {
-    fontSize: getResponsiveFontSize(28),
-      fontWeight: 'bold',
-      color: '#000000',
-    lineHeight: getResponsiveFontSize(34),
-    },
-    easyText: {
-    fontSize: getResponsiveFontSize(28),
-      fontWeight: 'bold',
-      color: '#8A0000',
-    lineHeight: getResponsiveFontSize(34),
-    },
-    section: {
-    paddingHorizontal: getResponsivePadding(20),
-    marginBottom: getResponsiveMargin(30),
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    marginBottom: getResponsiveMargin(16),
-    },
-    sectionTitle: {
-    fontSize: getResponsiveFontSize(18),
-      fontWeight: '600',
-      color: '#1F2937',
-    marginLeft: getResponsiveMargin(8),
-    },
-    horizontalScroll: {
-    marginHorizontal: -getResponsivePadding(20),
-    },
-    horizontalScrollContent: {
-    paddingHorizontal: getResponsivePadding(20),
-    },
-    vehicleCard: {
-      backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#8A0000',
-      borderRadius: 12,
-    padding: getResponsivePadding(16),
-    marginRight: getResponsiveMargin(16),
-    width: getResponsiveSize(180),
-    minHeight: getResponsiveSize(200),
-    },
-    vehicleIconContainer: {
-      backgroundColor: '#8A0000',
-      borderRadius: 8,
-    padding: getResponsivePadding(18),
-      alignItems: 'center',
-    marginBottom: getResponsiveMargin(16),
-    width: getResponsiveSize(90),
-    height: getResponsiveSize(90),
-      justifyContent: 'center',
-      alignSelf: 'center',
-    },
-    vehicleLabel: {
-    fontSize: getResponsiveFontSize(12),
-      color: '#8A0000',
-    marginBottom: getResponsiveMargin(4),
-    },
-    vehicleValue: {
-    fontSize: getResponsiveFontSize(14),
-      fontWeight: 'bold',
-      color: '#000000',
-    marginBottom: getResponsiveMargin(8),
-    },
-  parkingCard: {
-      backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#8A0000',
-      borderRadius: 12,
-    padding: getResponsivePadding(16),
-    marginRight: getResponsiveMargin(12),
-    width: getResponsiveSize(200),
-    minHeight: getResponsiveSize(180),
-    },
-    parkingLocation: {
-    fontSize: getResponsiveFontSize(12),
-      color: '#6B7280',
-    marginBottom: getResponsiveMargin(4),
-    },
-    parkingSpotId: {
-    fontSize: getResponsiveFontSize(18),
-      fontWeight: 'bold',
-      color: '#8A0000',
-    marginBottom: getResponsiveMargin(8),
-    },
-    parkingLabel: {
-    fontSize: getResponsiveFontSize(12),
-      color: '#6B7280',
-    marginBottom: getResponsiveMargin(4),
   },
-  timeSlotContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(8),
-    },
-    parkingTime: {
-    fontSize: getResponsiveFontSize(14),
-      color: '#1F2937',
-      flex: 1,
-    },
-    parkingPrice: {
-    fontSize: getResponsiveFontSize(16),
-      fontWeight: '600',
-      color: '#1F2937',
-    marginBottom: getResponsiveMargin(12),
-  },
-  parkingStatusContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    },
-    availableStatus: {
-    fontSize: getResponsiveFontSize(12),
-      fontWeight: 'bold',
-      color: '#4CAF50',
-    },
-    occupiedStatus: {
-    fontSize: getResponsiveFontSize(12),
-      fontWeight: 'bold',
-      color: '#8A0000',
-    },
-    bookButton: {
-      backgroundColor: '#8A0000',
-    paddingHorizontal: getResponsivePadding(16),
-    paddingVertical: getResponsivePadding(8),
-      borderRadius: 6,
-    },
-    bookButtonText: {
-      color: 'white',
-    fontSize: getResponsiveFontSize(12),
-      fontWeight: 'bold',
-    },
-    seeAllButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: getResponsiveMargin(16),
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(16),
-      borderWidth: 1,
-      borderColor: '#8A0000',
-      borderRadius: 8,
-      backgroundColor: 'white',
-    width: getResponsiveSize(160),
-      alignSelf: 'flex-start',
-    },
-    seeAllText: {
-    fontSize: getResponsiveFontSize(14),
-      color: '#8A0000',
-    marginLeft: getResponsiveMargin(8),
-      fontWeight: '600',
-    },
-    areaCard: {
-      backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#8A0000',
-      borderRadius: 12,
-    padding: getResponsivePadding(16),
-    marginRight: getResponsiveMargin(12),
-    width: getResponsiveSize(180),
-    minHeight: getResponsiveSize(100),
-      justifyContent: 'space-between',
-    },
-    areaName: {
-    fontSize: getResponsiveFontSize(14),
-      fontWeight: '600',
-      color: '#1F2937',
-      flex: 1,
-    },
-  areaLocationIcon: {
-    alignSelf: 'flex-end',
-    marginTop: getResponsiveMargin(8),
-  },
-  logoIcon: {
-    width: 48,
-    height: 48,
-    resizeMode: 'contain',
-  },
-  locationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(8),
-  },
-  locationTextContainer: {
-    flex: 1,
-  },
-  areaLogoIcon: {
-    width: 64,
-    height: 64,
-    resizeMode: 'contain',
-    alignSelf: 'center',
-    marginTop: getResponsiveMargin(8),
-    },
-    progressSection: {
-    paddingHorizontal: getResponsivePadding(20),
-    marginBottom: getResponsiveMargin(20),
-    },
-    progressContainer: {
-      alignItems: 'center',
-  },
-  progressTrack: {
-      width: '100%',
-    height: getResponsiveSize(4),
-      backgroundColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(2),
-      position: 'relative',
-    },
-    scrollHandle: {
-      position: 'absolute',
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(8),
-      backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(4),
-    top: getResponsiveSize(-2),
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-  modalContainer: {
-      backgroundColor: '#ffffff',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(24),
-    width: screenWidth * 0.85,
-    maxWidth: 400,
-      alignItems: 'center',
-    },
-    modalTitle: {
-    fontSize: getResponsiveFontSize(20),
-      fontWeight: 'bold',
-      color: '#8A0000',
-    marginBottom: getResponsiveMargin(8),
-    textAlign: 'center',
-    },
-    modalSubtitle: {
-    fontSize: getResponsiveFontSize(16),
-      color: '#666666',
-    marginBottom: getResponsiveMargin(24),
-      textAlign: 'center',
-    },
-  parkingAreaButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: getResponsiveMargin(24),
-    gap: getResponsiveMargin(12),
-    },
-    parkingAreaButton: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-      borderWidth: 1,
-      borderColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(16),
-    paddingTop: getResponsivePadding(20),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    parkingAreaButtonText: {
-    fontSize: getResponsiveFontSize(16),
-      fontWeight: '600',
-      color: '#333333',
-    },
-    closeButton: {
-    paddingVertical: getResponsivePadding(8),
-    paddingHorizontal: getResponsivePadding(16),
-    },
-    closeButtonText: {
-    fontSize: getResponsiveFontSize(16),
-      color: '#666666',
-      textAlign: 'center',
-    },
-  bookingModalContainer: {
-      backgroundColor: '#ffffff',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(24),
-    width: screenWidth * 0.85,
-    maxWidth: 400,
-      alignItems: 'center',
-    },
-    bookingModalTitle: {
-    fontSize: getResponsiveFontSize(20),
-      fontWeight: 'bold',
-      color: '#8A0000',
-    marginBottom: getResponsiveMargin(16),
-    textAlign: 'center',
-    },
-    bookingModalText: {
-    fontSize: getResponsiveFontSize(16),
-      color: '#666666',
-    marginBottom: getResponsiveMargin(16),
-      textAlign: 'left',
-    lineHeight: getResponsiveFontSize(22),
-    },
-    assignedSlotId: {
-    fontSize: getResponsiveFontSize(24),
-      fontWeight: 'bold',
-      color: '#333333',
-    marginBottom: getResponsiveMargin(12),
-    textAlign: 'center',
-    },
-    spotTypeText: {
-    fontSize: getResponsiveFontSize(16),
-      color: '#8A0000',
-      fontWeight: '600',
-    marginBottom: getResponsiveMargin(24),
-    textAlign: 'center',
-    },
-  bookNowButton: {
-      backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(16),
-    paddingHorizontal: getResponsivePadding(32),
-    marginBottom: getResponsiveMargin(16),
-      width: '100%',
-      alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bookNowButtonText: {
-      color: 'white',
-    fontSize: getResponsiveFontSize(18),
-      fontWeight: 'bold',
-    },
-  // Vehicle Selection Modal Styles
-  vehicleSelectionModalContainer: {
-      backgroundColor: '#ffffff',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(24),
-    width: screenWidth * 0.9,
-    maxWidth: 400,
-    maxHeight: screenHeight * 0.8,
-  },
-  vehicleModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(20),
-    },
-    vehicleModalTitle: {
-    fontSize: getResponsiveFontSize(20),
-      fontWeight: 'bold',
-      color: '#333333',
-      flex: 1,
-    },
-  vehicleTypeInfoContainer: {
-    backgroundColor: '#F0F8FF',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(12),
-    marginBottom: getResponsiveMargin(16),
-    borderLeftWidth: 4,
-    borderLeftColor: '#8A0000',
-  },
-  vehicleTypeInfoText: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#4A5568',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  closeXButton: {
-    fontSize: getResponsiveFontSize(20),
-    color: '#8A0000',
-    fontWeight: 'bold',
-  },
-  vehicleSelectionScroll: {
-    marginHorizontal: -getResponsivePadding(24),
-  },
-  vehicleSelectionScrollContent: {
-    paddingHorizontal: getResponsivePadding(24),
-  },
-  vehicleSelectionCard: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#8A0000',
-    borderRadius: getResponsiveSize(12),
-    padding: getResponsivePadding(16),
-    marginRight: getResponsiveMargin(12),
-    width: getResponsiveSize(160),
-    minHeight: getResponsiveSize(200),
-  },
-  vehicleSelectionCardSelected: {
-    borderWidth: 3,
-    borderColor: '#8A0000',
-    },
-    vehicleSelectionIconContainer: {
-      backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(12),
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(12),
-    width: getResponsiveSize(60),
-    height: getResponsiveSize(60),
-    justifyContent: 'center',
-    alignSelf: 'center',
-    },
-    vehicleSelectionLabel: {
-    fontSize: getResponsiveFontSize(10),
-      color: '#8A0000',
-    marginBottom: getResponsiveMargin(2),
-    },
-    vehicleSelectionValue: {
-    fontSize: getResponsiveFontSize(12),
-      fontWeight: 'bold',
-      color: '#000000',
-    marginBottom: getResponsiveMargin(6),
-  },
-  vehicleSelectionProgressContainer: {
-    marginVertical: getResponsiveMargin(20),
-    alignItems: 'center',
-  },
-  vehicleSelectionProgressTrack: {
-    width: '100%',
-    height: getResponsiveSize(4),
-    backgroundColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(2),
-    position: 'relative',
-  },
-  vehicleSelectionProgressHandle: {
-    position: 'absolute',
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(8),
-      backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(4),
-    top: getResponsiveSize(-2),
-  },
-  vehicleSelectionBookNowButton: {
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(8),
-    paddingVertical: getResponsivePadding(16),
-    paddingHorizontal: getResponsivePadding(32),
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  vehicleSelectionBookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-  },
-  progressIndicatorContainer: {
-    marginTop: getResponsiveMargin(16),
-    marginBottom: getResponsiveMargin(20),
-  },
-  progressBar: {
-    height: getResponsiveSize(4),
-    backgroundColor: '#E5E7EB',
-    borderRadius: getResponsiveSize(2),
-    position: 'relative',
-  },
-  progressHandle: {
-    position: 'absolute',
-    top: getResponsiveSize(-2),
-    width: getResponsiveSize(8),
-    height: getResponsiveSize(8),
-    backgroundColor: '#8A0000',
-    borderRadius: getResponsiveSize(4),
-  },
-  vehicleSelectionBookNowButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    padding: getResponsivePadding(40),
-    alignItems: 'center',
-      justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: getResponsiveMargin(10),
-    fontSize: getResponsiveFontSize(16),
-    color: '#666666',
-  },
-  emptyStateContainer: {
-    padding: getResponsivePadding(40),
-      alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: getResponsivePadding(40),
-  },
-  emptyText: {
-    fontSize: getResponsiveFontSize(18),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(8),
-  },
-  emptySubtext: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    textAlign: 'center',
-  },
-  emptyStateText: {
-    fontSize: getResponsiveFontSize(18),
-    color: '#666666',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(8),
-    fontWeight: '600',
-  },
-  emptyStateSubtext: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#999999',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(20),
-  },
-  addVehicleButton: {
-    backgroundColor: '#8A0000',
-    paddingHorizontal: getResponsivePadding(24),
-    paddingVertical: getResponsivePadding(12),
-    borderRadius: getResponsiveSize(8),
-  },
-  addVehicleButtonText: {
-      color: 'white',
-    fontSize: getResponsiveFontSize(14),
-    fontWeight: '600',
-  },
-  parkingAreaLocation: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#666666',
-    marginTop: getResponsiveMargin(4),
-  },
-  parkingSpotsList: {
-    maxHeight: getResponsiveSize(300),
-    marginVertical: getResponsiveMargin(10),
-  },
-  parkingSpotCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: getResponsivePadding(15),
-    marginBottom: getResponsiveMargin(10),
-    borderRadius: getResponsiveSize(8),
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-  },
-  spotInfo: {
-    flex: 1,
-  },
-  spotNumber: {
-    fontSize: getResponsiveFontSize(16),
-      fontWeight: 'bold',
-    color: '#8A0000',
-    marginBottom: getResponsiveMargin(2),
-  },
-  spotType: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666666',
-    marginBottom: getResponsiveMargin(2),
-  },
-  spotSection: {
-    fontSize: getResponsiveFontSize(12),
-    color: '#999999',
-  },
-  spotStatus: {
-    alignItems: 'center',
-    },
-  // Vehicle Mismatch Modal Styles
-  mismatchModalContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: getResponsiveSize(16),
-    padding: getResponsivePadding(24),
-    margin: getResponsiveMargin(20),
-    maxWidth: '90%',
-    alignSelf: 'center',
-  },
-  mismatchModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(20),
-  },
-  mismatchModalTitle: {
-    fontSize: getResponsiveFontSize(20),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    flex: 1,
-  },
-  mismatchContent: {
-    marginBottom: getResponsiveMargin(24),
-  },
-  mismatchMessage: {
-    fontSize: getResponsiveFontSize(16),
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(20),
-    lineHeight: getResponsiveFontSize(24),
-  },
-  mismatchDetails: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: getResponsiveSize(8),
-    padding: getResponsivePadding(16),
-    marginBottom: getResponsiveMargin(16),
-  },
-  mismatchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveMargin(8),
-  },
-  mismatchLabel: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    fontWeight: '500',
-  },
-  mismatchValue: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#8A0000',
-    fontWeight: 'bold',
-  },
-  mismatchSuggestion: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    lineHeight: getResponsiveFontSize(20),
-  },
-  mismatchCloseButton: {
-    backgroundColor: '#8A0000',
-    paddingVertical: getResponsivePadding(12),
-    paddingHorizontal: getResponsivePadding(24),
-    borderRadius: getResponsiveSize(8),
-    alignItems: 'center',
-  },
-  mismatchCloseButtonText: {
-    color: 'white',
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-  },
-  // No Compatible Vehicles Styles
-  noCompatibleVehiclesContainer: {
-    padding: getResponsivePadding(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  noCompatibleVehiclesText: {
-    fontSize: getResponsiveFontSize(16),
-    fontWeight: 'bold',
-    color: '#8A0000',
-    textAlign: 'center',
-    marginBottom: getResponsiveMargin(8),
-  },
-  noCompatibleVehiclesSubtext: {
-    fontSize: getResponsiveFontSize(14),
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: getResponsiveFontSize(20),
-  },
-  });
+});

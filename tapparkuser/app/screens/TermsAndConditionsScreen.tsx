@@ -223,9 +223,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: getResponsiveSize(20),
     borderTopRightRadius: getResponsiveSize(20),
     paddingTop: getResponsivePadding(25),
-    paddingBottom: getResponsivePadding(35),
+    paddingBottom: 0,
     paddingHorizontal: getResponsivePadding(20),
-    maxHeight: screenHeight * 0.75,
+    height: screenHeight * 0.80,
     zIndex: 2,
     shadowColor: '#000',
     shadowOffset: {

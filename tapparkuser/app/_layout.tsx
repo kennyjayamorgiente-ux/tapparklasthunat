@@ -2,7 +2,9 @@ import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DrawerProvider } from '../contexts/DrawerContext';
 import { AuthProvider } from '../contexts/AuthContext';
+import { LoadingProvider } from '../contexts/LoadingContext';
 import CustomDrawer from '../components/CustomDrawer';
+import GlobalSpinner from '../components/GlobalSpinner';
 import { useDrawer } from '../contexts/DrawerContext';
 
 function RootLayoutNav() {
@@ -13,7 +15,7 @@ function RootLayoutNav() {
 			<Stack
 				screenOptions={{
 					headerShown: false,
-					animation: 'slide_from_right',
+					animation: 'fade',
 				}}
 			>
 				<Stack.Screen 
@@ -61,11 +63,14 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
 	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
+		<GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
 			<AuthProvider>
-				<DrawerProvider>
-					<RootLayoutNav />
-				</DrawerProvider>
+				<LoadingProvider>
+					<DrawerProvider>
+						<RootLayoutNav />
+						<GlobalSpinner />
+					</DrawerProvider>
+				</LoadingProvider>
 			</AuthProvider>
 		</GestureHandlerRootView>
 	);

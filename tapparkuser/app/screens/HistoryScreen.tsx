@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   maroonUsersEditIconSvg,
@@ -37,12 +38,14 @@ import {
   getAdaptivePadding, 
   getAdaptiveMargin 
 } from '../../hooks/use-screen-dimensions';
+import { createHistoryScreenStyles } from '../styles/historyScreenStyles';
 
 // Now using dynamic orientation-aware responsive system
 
 const HistoryScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const screenDimensions = useScreenDimensions();
   const vehicleScrollProgress = useRef(new Animated.Value(0)).current;
   const [isVehicleSelectionModalVisible, setIsVehicleSelectionModalVisible] = useState(false);
@@ -256,6 +259,7 @@ const HistoryScreen: React.FC = () => {
             {
               text: 'OK',
               onPress: () => {
+                showLoading('Loading parking session...');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -272,6 +276,7 @@ const HistoryScreen: React.FC = () => {
                     status: response.data.bookingDetails.status
                   }
                 });
+                setTimeout(() => hideLoading(), 300);
                 setIsVehicleSelectionModalVisible(false);
                 setSelectedVehicle('');
                 setSelectedSpotForBooking(null);
@@ -450,7 +455,7 @@ const HistoryScreen: React.FC = () => {
     return require('../assets/img/fpa-logo.png'); // Default logo
   };
 
-  const styles = createStyles(screenDimensions);
+  const styles = createHistoryScreenStyles(screenDimensions);
 
   return (
     <View style={styles.container}>
@@ -1498,4 +1503,4 @@ const createStyles = (screenDimensions: any) => StyleSheet.create({
   },
 });
 
-export default HistoryScreen;
+// Styles are now in historyScreenStyles.ts
