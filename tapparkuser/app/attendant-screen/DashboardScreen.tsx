@@ -592,9 +592,9 @@ const DashboardScreen: React.FC = () => {
       styles.vehicleTypeCard,
       {
         padding: getAdaptivePadding(screenDimensions, 20),
-        marginHorizontal: getAdaptiveSpacing(screenDimensions, 6),
+        marginHorizontal: screenDimensions.isLandscape ? getAdaptiveSpacing(screenDimensions, 4) : getAdaptiveSpacing(screenDimensions, 6),
         minWidth: screenDimensions.isTablet ? 180 : 140,
-        flex: screenDimensions.isTablet && screenDimensions.isLandscape ? 0 : 1
+        flex: 1 // Always use flex: 1 to fill available space
       }
     ]}>
       <SvgXml 
@@ -905,8 +905,9 @@ const DashboardScreen: React.FC = () => {
             styles.vehicleTypesContainer,
             screenDimensions.isLandscape ? { 
               flexDirection: 'row', 
-              justifyContent: 'flex-start',
-              gap: getAdaptiveSpacing(screenDimensions, 8)
+              justifyContent: 'space-between',
+              gap: getAdaptiveSpacing(screenDimensions, 8),
+              width: '100%'
             } : {}
           ]}>
             {vehicleTypes.map(renderVehicleTypeCard)}
