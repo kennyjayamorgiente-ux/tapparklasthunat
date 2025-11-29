@@ -13,6 +13,7 @@ import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
+import { useTheme, useThemeColors } from '../contexts/ThemeContext';
 import {
   whiteHomeIconSvg,
   maroonProfileIconSvg,
@@ -30,6 +31,7 @@ import {
 } from '../app/assets/icons/index2';
 import { Ionicons } from '@expo/vector-icons';
 import { SvgXml } from 'react-native-svg';
+import SharedHeader from './SharedHeader';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(screenWidth * 0.75, 320);
@@ -68,13 +70,16 @@ interface CustomDrawerProps {
 }
 
 const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
-  const [isDarkMode, setIsDarkMode] = React.useState(false);
   const router = useRouter();
   const { showLoading, hideLoading } = useLoading();
+  const { isDarkMode, toggleTheme } = useTheme();
+  const colors = useThemeColors();
   const pathname = usePathname();
   
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  
+  const dynamicStyles = getStyles(colors);
 
   const menuItems = React.useMemo(() => [
     { 
@@ -149,7 +154,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
   const handleNavigation = React.useCallback((route: string) => {
     console.log('🚀 Navigating to:', route);
     onClose();
-    showLoading();
+    showLoading('Loading...', route); // Pass target route
     // Use requestAnimationFrame to ensure navigation happens after drawer closes
     requestAnimationFrame(() => {
     setTimeout(() => {
@@ -191,10 +196,6 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
     }
   }, [router, onClose, logout, showLoading, hideLoading]);
 
-  const toggleTheme = React.useCallback(() => {
-    setIsDarkMode(!isDarkMode);
-  }, [isDarkMode]);
-
   const onGestureEvent = Animated.event(
     [{ nativeEvent: { translationX: slideAnim } }],
     { useNativeDriver: true }
@@ -217,11 +218,11 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <View style={styles.overlay}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={dynamicStyles.overlay}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       <Animated.View
         style={[
-          styles.backdrop,
+          dynamicStyles.backdrop,
           {
             opacity: overlayOpacity,
           },
@@ -229,7 +230,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
         pointerEvents={isOpen ? 'auto' : 'none'}
       >
         <TouchableOpacity
-          style={styles.backdropTouchable}
+          style={dynamicStyles.backdropTouchable}
           activeOpacity={1}
           onPress={onClose}
         />
@@ -242,7 +243,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
       >
         <Animated.View
           style={[
-            styles.drawer,
+            dynamicStyles.drawer,
             {
               transform: [
                 { translateX: slideAnim },
@@ -252,26 +253,24 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
           pointerEvents={isOpen ? 'auto' : 'none'}
         >
           {/* Header */}
-          <SafeAreaView style={styles.headerSafeArea} edges={['top']}>
-            <View style={styles.header}>
-              <TouchableOpacity style={styles.menuButton} onPress={onClose}>
-                <Ionicons name="close" size={24} color="white" />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>TapPark</Text>
-            </View>
-          </SafeAreaView>
+          <SharedHeader 
+            title="TapPark" 
+            showBackButton={true}
+            onBackPress={onClose}
+            leftIcon="close"
+          />
 
               {/* Menu Items */}
-              <View style={styles.menuContainer}>
+              <View style={dynamicStyles.menuContainer}>
                 {menuItems.map((item) => {
                   const isActive = pathname === item.route;
                   return (
-                    <View key={item.id} style={styles.menuItemWrapper}>
-                      {isActive && <View style={styles.activeIndicator} />}
+                    <View key={item.id} style={dynamicStyles.menuItemWrapper}>
+                      {isActive && <View style={dynamicStyles.activeIndicator} />}
                       <TouchableOpacity
                         style={[
-                          styles.menuItem,
-                          isActive && styles.activeMenuItem,
+                          dynamicStyles.menuItem,
+                          isActive && dynamicStyles.activeMenuItem,
                         ]}
                         onPress={() => handleNavigation(item.route)}
                       >
@@ -282,8 +281,8 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
                         />
                         <Text
                           style={[
-                            styles.menuText,
-                            isActive && styles.activeMenuText,
+                            dynamicStyles.menuText,
+                            isActive && dynamicStyles.activeMenuText,
                           ]}
                         >
                           {item.text}
@@ -295,12 +294,12 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
               </View>
 
               {/* Bottom Section */}
-              <View style={styles.bottomSection}>
+              <View style={dynamicStyles.bottomSection}>
                 {/* Theme Toggle */}
-                <View style={styles.themeToggleContainer}>
-                  <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme}>
-                    <View style={[styles.themeToggleTrack, isDarkMode && styles.themeToggleTrackDark]}>
-                      <View style={[styles.themeToggleThumb, isDarkMode && styles.themeToggleThumbDark]}>
+                <View style={dynamicStyles.themeToggleContainer}>
+                  <TouchableOpacity style={dynamicStyles.themeToggle} onPress={toggleTheme}>
+                    <View style={[dynamicStyles.themeToggleTrack, isDarkMode && dynamicStyles.themeToggleTrackDark]}>
+                      <View style={[dynamicStyles.themeToggleThumb, isDarkMode && dynamicStyles.themeToggleThumbDark]}>
                         <SvgXml 
                           xml={isDarkMode ? blackDarkIconSvg : blackLightIconSvg} 
                           width={getResponsiveSize(16)} 
@@ -312,13 +311,13 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
                 </View>
 
                 {/* Sign Out Button */}
-                <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+                <TouchableOpacity style={dynamicStyles.signOutButton} onPress={handleSignOut}>
                   <SvgXml 
                     xml={maroonArrowIconSvg}
                     width={getResponsiveSize(24)}
                     height={getResponsiveSize(24)} 
                   />
-                  <Text style={styles.signOutText}>Log Out</Text>
+                  <Text style={dynamicStyles.signOutText}>Log Out</Text>
                 </TouchableOpacity>
               </View>
         </Animated.View>
@@ -327,7 +326,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   overlay: {
     position: 'absolute',
     top: 0,
@@ -345,7 +344,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
   },
   backdropTouchable: {
     flex: 1,
@@ -356,8 +355,8 @@ const styles = StyleSheet.create({
     left: 0,
     width: DRAWER_WIDTH,
     height: '100%',
-    backgroundColor: 'white',
-    shadowColor: '#000',
+    backgroundColor: colors.drawer,
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 2,
       height: 0,
@@ -365,36 +364,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-  },
-  headerSafeArea: {
-    backgroundColor: 'transparent',
-    marginBottom: 0,
-  },
-  header: {
-    backgroundColor: '#8A0000',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  menuButton: {
-    padding: 8,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    flex: 1,
-    textAlign: 'center',
   },
   menuContainer: {
     paddingHorizontal: 0,
@@ -408,7 +377,7 @@ const styles = StyleSheet.create({
   activeIndicator: {
     width: 12,
     height: 48,
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.drawerActive,
     marginRight: 8,
     marginLeft: 0,
     borderTopRightRadius: 8,
@@ -424,16 +393,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activeMenuItem: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.drawerActive,
   },
   menuText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.drawerText,
     marginLeft: 15,
   },
   activeMenuText: {
-    color: 'white',
+    color: colors.drawerActiveText,
   },
   bottomSection: {
     marginTop: 'auto',
@@ -450,18 +419,18 @@ const styles = StyleSheet.create({
   themeToggleTrack: {
     width: 60,
     height: 30,
-    backgroundColor: '#FFD700',
+    backgroundColor: colors.warning, // Gold/yellow for light mode
     borderRadius: 15,
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
   themeToggleTrackDark: {
-    backgroundColor: '#333',
+    backgroundColor: colors.gray500, // Gray for dark mode
   },
   themeToggleThumb: {
     width: 26,
     height: 26,
-    backgroundColor: 'white',
+    backgroundColor: colors.textInverse,
     borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
@@ -481,7 +450,7 @@ const styles = StyleSheet.create({
   signOutText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginLeft: 15,
   },
 });

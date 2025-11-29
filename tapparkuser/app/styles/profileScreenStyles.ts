@@ -2,6 +2,37 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Type for theme colors
+type ThemeColors = {
+  background: string;
+  backgroundSecondary: string;
+  card: string;
+  profileCard: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  border: string;
+  shadow: string;
+  overlay: string;
+  success: string;
+  error: string;
+  warning: string;
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+};
+
 // Enhanced responsive calculation functions - keeping same layout, just making it adaptive
 const isSmallScreen = screenWidth < 375;
 const isMediumScreen = screenWidth >= 375 && screenWidth < 414;
@@ -45,10 +76,10 @@ const getResponsiveMargin = (size: number): number => {
   return size;
 };
 
-export const profileScreenStyles = StyleSheet.create({
+export const getProfileScreenStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
     paddingTop: 0, // Remove any top padding that might push content down
   },
   scrollContainer: {
@@ -71,14 +102,16 @@ export const profileScreenStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getResponsiveSize(20),
     borderTopRightRadius: getResponsiveSize(20),
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getResponsivePadding(25),
     paddingBottom: 0,
     paddingHorizontal: getResponsivePadding(20),
     height: screenHeight * 0.80,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -2,
@@ -98,34 +131,34 @@ export const profileScreenStyles = StyleSheet.create({
     marginBottom: getResponsivePadding(15),
     backgroundColor: 'transparent',
     borderRadius: getResponsiveSize(90),
-    width: getResponsiveSize(180),
-    height: getResponsiveSize(180),
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(200),
     alignItems: 'center',
     justifyContent: 'center',
   },
   profilePicture: {
-    width: getResponsiveSize(100),
-    height: getResponsiveSize(100),
-    borderRadius: getResponsiveSize(50),
-    backgroundColor: '#8A0000',
+    width: getResponsiveSize(120),
+    height: getResponsiveSize(120),
+    borderRadius: getResponsiveSize(60),
+    backgroundColor: colors.primary,
     borderWidth: getResponsiveSize(3),
     borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitials: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   profilePictureImage: {
-    borderRadius: getResponsiveSize(50),
+    borderRadius: getResponsiveSize(60),
   },
   editIconContainer: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     width: getResponsiveSize(32),
     height: getResponsiveSize(32),
     borderRadius: getResponsiveSize(16),
@@ -137,12 +170,12 @@ export const profileScreenStyles = StyleSheet.create({
   userName: {
     fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(8),
   },
   userEmail: {
     fontSize: getResponsiveFontSize(18),
-    color: '#666666',
+    color: colors.textSecondary,
   },
   menuContainer: {
     marginBottom: getResponsivePadding(25),
@@ -151,18 +184,21 @@ export const profileScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: getResponsivePadding(18),
-    paddingHorizontal: 0,
+    paddingHorizontal: getResponsivePadding(16),
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: colors.gray500 || '#6B7280',
+    backgroundColor: colors.profileCard,
+    borderRadius: getResponsiveSize(8),
+    marginBottom: getResponsiveMargin(8),
   },
   menuItemText: {
     fontSize: getResponsiveFontSize(18),
-    color: '#8A0000',
+    color: colors.primary,
     marginLeft: getResponsivePadding(15),
     fontWeight: '500',
   },
   helpButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -179,7 +215,7 @@ export const profileScreenStyles = StyleSheet.create({
     elevation: 5,
   },
   helpButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(18),
     fontWeight: '600',
     marginLeft: getResponsivePadding(10),
@@ -191,23 +227,23 @@ export const profileScreenStyles = StyleSheet.create({
   },
   loadingText: {
     fontSize: getResponsiveFontSize(16),
-    color: '#8A0000',
+    color: colors.primary,
     marginTop: getResponsiveMargin(8),
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
     borderRadius: getResponsiveSize(16),
     padding: getResponsivePadding(24),
     width: screenWidth * 0.85,
     maxWidth: 400,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -219,18 +255,18 @@ export const profileScreenStyles = StyleSheet.create({
   modalTitle: {
     fontSize: getResponsiveFontSize(22),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(8),
     textAlign: 'center',
   },
   modalSubtitle: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
     marginBottom: getResponsiveMargin(20),
     textAlign: 'center',
   },
   modalButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     width: '100%',
     paddingVertical: getResponsivePadding(14),
     paddingHorizontal: getResponsivePadding(20),
@@ -240,7 +276,7 @@ export const profileScreenStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
   },
@@ -254,10 +290,10 @@ export const profileScreenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#FF4444',
+    borderColor: colors.error,
   },
   modalButtonTextRemove: {
-    color: '#FF4444',
+    color: colors.error,
     fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
   },
@@ -271,13 +307,41 @@ export const profileScreenStyles = StyleSheet.create({
     marginTop: getResponsiveMargin(8),
   },
   modalCancelButtonText: {
-    color: '#666666',
+    color: colors.textSecondary,
     fontSize: getResponsiveFontSize(16),
     fontWeight: '500',
   },
 });
 
-
+// Export default styles for backward compatibility (light theme)
+export const profileScreenStyles = getProfileScreenStyles({
+  background: '#383838',
+  backgroundSecondary: '#2C2C2E',
+  card: '#FFFFFF',
+  text: '#000000',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  textInverse: '#FFFFFF',
+  primary: '#8A0000',
+  primaryDark: '#800000',
+  primaryLight: '#ff4444',
+  border: '#F0F0F0',
+  shadow: '#000',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  success: '#4CAF50',
+  error: '#FF4444',
+  warning: '#FFA500',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#E0E0E0',
+  gray400: '#CCCCCC',
+  gray500: '#999999',
+  gray600: '#666666',
+  gray700: '#4B5563',
+  gray800: '#374151',
+  gray900: '#1F2937',
+} as ThemeColors);
 
 
 

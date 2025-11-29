@@ -3,6 +3,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DrawerProvider } from '../contexts/DrawerContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import { LoadingProvider } from '../contexts/LoadingContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
 import CustomDrawer from '../components/CustomDrawer';
 import GlobalSpinner from '../components/GlobalSpinner';
 import { useDrawer } from '../contexts/DrawerContext';
@@ -64,14 +65,16 @@ function RootLayoutNav() {
 export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-			<AuthProvider>
-				<LoadingProvider>
-				<DrawerProvider>
-					<RootLayoutNav />
-						<GlobalSpinner />
-				</DrawerProvider>
-				</LoadingProvider>
-			</AuthProvider>
+			<ThemeProvider>
+				<AuthProvider>
+					<LoadingProvider>
+						<DrawerProvider>
+							<RootLayoutNav />
+							<GlobalSpinner />
+						</DrawerProvider>
+					</LoadingProvider>
+				</AuthProvider>
+			</ThemeProvider>
 		</GestureHandlerRootView>
 	);
 }

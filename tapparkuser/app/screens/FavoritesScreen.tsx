@@ -17,9 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLoading } from '../../contexts/LoadingContext';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { SvgXml } from 'react-native-svg';
 import ApiService from '../../services/api';
-import { favoritesScreenStyles } from '../styles/favoritesScreenStyles';
+import { getFavoritesScreenStyles } from '../styles/favoritesScreenStyles';
 import { 
   maroonUsersEditIconSvg,
   maroonLocationIconSvg,
@@ -82,6 +83,9 @@ const FavoritesScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useLoading();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
+  const favoritesScreenStyles = getFavoritesScreenStyles(colors);
   const vehicleScrollProgress = useRef(new Animated.Value(0)).current;
   const [isVehicleSelectionModalVisible, setIsVehicleSelectionModalVisible] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState('');
@@ -312,7 +316,7 @@ const FavoritesScreen: React.FC = () => {
               text: 'OK',
               onPress: () => {
                 // Navigate to ActiveParkingScreen with complete booking details
-                showLoading('Loading parking session...');
+                showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -413,7 +417,7 @@ const FavoritesScreen: React.FC = () => {
           {/* Profile Picture Section */}
           <View style={favoritesScreenStyles.fixedProfileSection}>
             <View style={favoritesScreenStyles.profilePictureContainer}>
-              <ProfilePicture size={getResponsiveSize(180)} />
+              <ProfilePicture size={isTablet ? 170 : 150} />
             </View>
             
             <View style={favoritesScreenStyles.userInfoContainer}>
@@ -504,7 +508,7 @@ const FavoritesScreen: React.FC = () => {
             <View style={favoritesScreenStyles.vehicleModalHeader}>
               <Text style={favoritesScreenStyles.vehicleModalTitle}>Select Vehicle for Reservation</Text>
               <TouchableOpacity onPress={handleCloseVehicleSelectionModal}>
-                <Ionicons name="close" size={24} color="#8A0000" />
+                <Ionicons name="close" size={24} color={colors.primary} />
               </TouchableOpacity>
             </View>
             
@@ -609,7 +613,7 @@ const FavoritesScreen: React.FC = () => {
             <View style={favoritesScreenStyles.mismatchModalHeader}>
               <Text style={favoritesScreenStyles.mismatchModalTitle}>🚗 Vehicle Type Mismatch</Text>
               <TouchableOpacity onPress={() => setShowVehicleMismatchModal(false)}>
-                <Ionicons name="close" size={24} color="#8A0000" />
+                <Ionicons name="close" size={24} color={colors.primary} />
               </TouchableOpacity>
             </View>
             

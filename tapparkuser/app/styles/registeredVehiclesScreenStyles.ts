@@ -2,6 +2,37 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Type for theme colors
+type ThemeColors = {
+  background: string;
+  backgroundSecondary: string;
+  card: string;
+  profileCard: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  border: string;
+  shadow: string;
+  overlay: string;
+  success: string;
+  error: string;
+  warning: string;
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+};
+
 // Responsive calculation functions
 const isSmallScreen = screenWidth < 400;
 const isTablet = screenWidth >= 768 && screenWidth < 1024;
@@ -35,10 +66,10 @@ const getResponsiveMargin = (size: number): number => {
   return size;
 };
 
-export const registeredVehiclesScreenStyles = StyleSheet.create({
+export const getRegisteredVehiclesScreenStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -60,15 +91,17 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getResponsiveSize(20),
     borderTopRightRadius: getResponsiveSize(20),
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getResponsivePadding(25),
     paddingBottom: 0,
     paddingHorizontal: getResponsivePadding(20),
     height: screenHeight * 0.80,
     zIndex: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -2,
@@ -87,23 +120,23 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     marginTop: -getResponsiveSize(70),
     backgroundColor: 'transparent',
     borderRadius: getResponsiveSize(90),
-    width: getResponsiveSize(180),
-    height: getResponsiveSize(180),
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(200),
     alignItems: 'center',
     justifyContent: 'center',
   },
   profilePicture: {
-    width: getResponsiveSize(100),
-    height: getResponsiveSize(100),
-    borderRadius: getResponsiveSize(50),
-    backgroundColor: '#8A0000',
+    width: getResponsiveSize(120),
+    height: getResponsiveSize(120),
+    borderRadius: getResponsiveSize(60),
+    backgroundColor: colors.primary,
     borderWidth: getResponsiveSize(3),
     borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitials: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -111,7 +144,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     position: 'absolute',
     bottom: -getResponsiveSize(5),
     right: -getResponsiveSize(5),
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(12),
     width: getResponsiveSize(24),
     height: getResponsiveSize(24),
@@ -133,7 +166,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   },
   userEmail: {
     fontSize: getResponsiveFontSize(18),
-    color: '#666666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   profileCardScroll: {
@@ -163,12 +196,12 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     paddingRight: getResponsivePadding(20),
   },
   vehicleCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(12),
     padding: getResponsivePadding(15),
     marginRight: getResponsivePadding(15),
     width: screenWidth * 0.8,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -177,7 +210,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 2,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     position: 'relative',
   },
   vehicleInfo: {
@@ -196,16 +229,16 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   },
   vehicleLabel: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   vehicleValue: {
     fontSize: getResponsiveFontSize(16),
-    color: '#333333',
+    color: colors.text,
     fontWeight: '600',
   },
   addVehicleButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -223,7 +256,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     elevation: 5,
   },
   addVehicleText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(18),
     fontWeight: '600',
     marginLeft: getResponsivePadding(10),
@@ -235,7 +268,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   scrollIndicatorTrack: {
     width: '100%',
     height: getResponsiveSize(4),
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.gray300,
     borderRadius: getResponsiveSize(2),
     position: 'relative',
   },
@@ -243,7 +276,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
     position: 'absolute',
     width: getResponsiveSize(20),
     height: getResponsiveSize(8),
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(4),
     top: getResponsiveSize(-2),
   },
@@ -261,12 +294,12 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteModalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
     borderRadius: getResponsiveSize(16),
     padding: getResponsivePadding(24),
     width: screenWidth * 0.85,
@@ -276,20 +309,20 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   deleteModalTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#333333',
+    color: colors.text,
     marginBottom: getResponsiveMargin(16),
     textAlign: 'center',
   },
   vehicleDetailText: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
     marginBottom: getResponsiveMargin(8),
     textAlign: 'left',
     alignSelf: 'stretch',
   },
   confirmationText: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
     marginBottom: getResponsiveMargin(24),
     textAlign: 'center',
     lineHeight: getResponsiveFontSize(22),
@@ -302,7 +335,7 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(8),
     paddingVertical: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(16),
@@ -311,11 +344,11 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   cancelButtonText: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
-    color: '#666666',
+    color: colors.textSecondary,
   },
   deleteConfirmButton: {
     flex: 1,
-    backgroundColor: '#FF4444',
+    backgroundColor: colors.error,
     borderRadius: getResponsiveSize(8),
     paddingVertical: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(16),
@@ -324,9 +357,39 @@ export const registeredVehiclesScreenStyles = StyleSheet.create({
   deleteConfirmButtonText: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
-    color: 'white',
+    color: colors.textInverse,
   },
 });
+
+// Export default styles for backward compatibility (light theme)
+export const registeredVehiclesScreenStyles = getRegisteredVehiclesScreenStyles({
+  background: '#383838',
+  backgroundSecondary: '#F5F5F5',
+  card: '#FFFFFF',
+  text: '#000000',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  textInverse: '#FFFFFF',
+  primary: '#8A0000',
+  primaryDark: '#800000',
+  primaryLight: '#ff4444',
+  border: '#E0E0E0',
+  shadow: '#000',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  success: '#4CAF50',
+  error: '#FF4444',
+  warning: '#FFA500',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#E0E0E0',
+  gray400: '#CCCCCC',
+  gray500: '#999999',
+  gray600: '#666666',
+  gray700: '#4B5563',
+  gray800: '#374151',
+  gray900: '#1F2937',
+} as ThemeColors);
 
 
 

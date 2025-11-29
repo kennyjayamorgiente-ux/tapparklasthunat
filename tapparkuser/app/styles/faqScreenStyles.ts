@@ -2,6 +2,37 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Type for theme colors
+type ThemeColors = {
+  background: string;
+  backgroundSecondary: string;
+  card: string;
+  profileCard: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  border: string;
+  shadow: string;
+  overlay: string;
+  success: string;
+  error: string;
+  warning: string;
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+};
+
 // Responsive calculation functions
 const isSmallScreen = screenWidth < 375;
 const isMediumScreen = screenWidth >= 375 && screenWidth < 414;
@@ -45,10 +76,10 @@ const getResponsiveMargin = (baseMargin: number): number => {
   return baseMargin;
 };
 
-export const faqScreenStyles = StyleSheet.create({
+export const getFaqScreenStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -62,14 +93,16 @@ export const faqScreenStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getResponsiveSize(20),
     borderTopRightRadius: getResponsiveSize(20),
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getResponsivePadding(25),
     paddingBottom: 0, // Match ProfileScreen - Add 50px to cover the gap
     paddingHorizontal: getResponsivePadding(20),
     height: screenHeight * 0.80,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -2, // Match ProfileScreen shadow
@@ -101,13 +134,13 @@ export const faqScreenStyles = StyleSheet.create({
   userName: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(5),
     textAlign: 'center',
   },
   userEmail: {
     fontSize: getResponsiveFontSize(18),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   faqScroll: {
@@ -119,18 +152,18 @@ export const faqScreenStyles = StyleSheet.create({
   faqTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(20),
     paddingHorizontal: getResponsivePadding(20),
   },
   faqItem: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(12),
     marginBottom: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(16),
     paddingVertical: getResponsivePadding(12),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
   },
   faqQuestionContainer: {
     flexDirection: 'row',
@@ -140,7 +173,7 @@ export const faqScreenStyles = StyleSheet.create({
   faqQuestion: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
-    color: '#8A0000',
+    color: colors.primary,
     flex: 1,
     marginRight: getResponsivePadding(10),
   },
@@ -155,7 +188,37 @@ export const faqScreenStyles = StyleSheet.create({
   },
   faqAnswer: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666',
+    color: colors.textSecondary,
     lineHeight: getResponsiveFontSize(20),
   },
 });
+
+// Export default styles for backward compatibility (light theme)
+export const faqScreenStyles = getFaqScreenStyles({
+  background: '#383838',
+  backgroundSecondary: '#F8F8F8',
+  card: '#FFFFFF',
+  text: '#000000',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  textInverse: '#FFFFFF',
+  primary: '#8A0000',
+  primaryDark: '#800000',
+  primaryLight: '#ff4444',
+  border: '#E0E0E0',
+  shadow: '#000',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  success: '#4CAF50',
+  error: '#FF4444',
+  warning: '#FFA500',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#E0E0E0',
+  gray400: '#CCCCCC',
+  gray500: '#999999',
+  gray600: '#666666',
+  gray700: '#4B5563',
+  gray800: '#374151',
+  gray900: '#1F2937',
+} as ThemeColors);

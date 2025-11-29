@@ -4,18 +4,19 @@ import { Platform, NativeModules } from 'react-native';
 // API Configuration for Tapparkuser
 export const API_CONFIG = {
   // Your computer's IP address (from ipconfig)
-  COMPUTER_IP: '192.168.1.22',
+  // Update this if your IP changes
+  COMPUTER_IP: '192.168.1.22', // Updated to match detected IP
   
   // API Base URLs
   LOCALHOST: 'http://localhost:3000/api',
-  NETWORK: 'http://192.168.1.22:3000/api',
+  NETWORK: 'http://192.168.1.22:3000/api', // Updated to match detected IP
   
   // Current environment
   // Change this to 'network' when testing on physical device
   ENVIRONMENT: 'network' as 'localhost' | 'network',
 
-  // Set to false to disable auto-detection and always use the values above
-  AUTO_DETECT: false,
+  // Set to true to auto-detect IP from Expo, false to use COMPUTER_IP above
+  AUTO_DETECT: false, // Set to true to use detected IP automatically
 };
 
 const API_PORT = 3000;

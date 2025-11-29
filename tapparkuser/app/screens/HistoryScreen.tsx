@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLoading } from '../../contexts/LoadingContext';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   maroonUsersEditIconSvg,
@@ -46,6 +47,8 @@ const HistoryScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
   const { showLoading, hideLoading } = useLoading();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
   const screenDimensions = useScreenDimensions();
   const vehicleScrollProgress = useRef(new Animated.Value(0)).current;
   const [isVehicleSelectionModalVisible, setIsVehicleSelectionModalVisible] = useState(false);
@@ -259,7 +262,7 @@ const HistoryScreen: React.FC = () => {
             {
               text: 'OK',
               onPress: () => {
-                showLoading('Loading parking session...');
+                showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -455,7 +458,7 @@ const HistoryScreen: React.FC = () => {
     return require('../assets/img/fpa-logo.png'); // Default logo
   };
 
-  const styles = createHistoryScreenStyles(screenDimensions);
+  const styles = createHistoryScreenStyles(screenDimensions, colors);
 
   return (
     <View style={styles.container}>
@@ -471,7 +474,7 @@ const HistoryScreen: React.FC = () => {
           {/* Profile Picture Section */}
           <View style={styles.fixedProfileSection}>
             <View style={styles.profilePictureContainer}>
-              <ProfilePicture size={getAdaptiveSize(screenDimensions, 180)} />
+              <ProfilePicture size={screenDimensions.isTablet ? 170 : 150} />
             </View>
             
             <View style={styles.userInfoContainer}>
@@ -487,7 +490,7 @@ const HistoryScreen: React.FC = () => {
               
               {isLoading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#8A0000" />
+                  <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.loadingText}>Loading parking history...</Text>
                 </View>
               ) : historyData.length === 0 ? (

@@ -2,6 +2,37 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Type for theme colors
+type ThemeColors = {
+  background: string;
+  backgroundSecondary: string;
+  card: string;
+  profileCard: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  border: string;
+  shadow: string;
+  overlay: string;
+  success: string;
+  error: string;
+  warning: string;
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+};
+
 // Responsive calculation functions
 const isSmallScreen = screenWidth < 375;
 const isMediumScreen = screenWidth >= 375 && screenWidth < 414;
@@ -45,10 +76,10 @@ const getResponsiveMargin = (baseMargin: number): number => {
   return baseMargin;
 };
 
-export const favoritesScreenStyles = StyleSheet.create({
+export const getFavoritesScreenStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -74,16 +105,18 @@ export const favoritesScreenStyles = StyleSheet.create({
     bottom: 0, // Match ProfileScreen position
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getResponsiveSize(20), // Match ProfileScreen
     borderTopRightRadius: getResponsiveSize(20), // Match ProfileScreen
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getResponsivePadding(25),
     paddingBottom: 0,
     paddingHorizontal: getResponsivePadding(20),
     height: screenHeight * 0.80,
     flexDirection: 'column', // Enable flexbox for proper ScrollView sizing
     zIndex: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -2, // Match ProfileScreen shadow
@@ -108,22 +141,20 @@ export const favoritesScreenStyles = StyleSheet.create({
     marginTop: -getResponsiveSize(70),
     backgroundColor: 'transparent',
     borderRadius: getResponsiveSize(90),
-    width: getResponsiveSize(180),
-    height: getResponsiveSize(180),
-    borderWidth: getResponsiveSize(3),
-    borderColor: 'white',
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(200),
     alignItems: 'center',
     justifyContent: 'center',
   },
   profilePicture: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitials: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -134,14 +165,14 @@ export const favoritesScreenStyles = StyleSheet.create({
   userName: {
     fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(5),
     letterSpacing: 1,
     textAlign: 'center',
   },
   userEmail: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   spotsContainer: {
@@ -150,18 +181,18 @@ export const favoritesScreenStyles = StyleSheet.create({
   spotsTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(20),
   },
   parkingCard: {
-    backgroundColor: '#fcfcfc',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     borderRadius: 12,
     padding: getResponsivePadding(16),
     marginBottom: getResponsiveMargin(15),
     position: 'relative',
-    shadowColor: '#8A0000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -181,13 +212,13 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   parkingLocation: {
     fontSize: getResponsiveFontSize(12),
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: getResponsiveMargin(4),
   },
   parkingSpotId: {
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(8),
   },
   logoIcon: {
@@ -197,7 +228,7 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   parkingLabel: {
     fontSize: getResponsiveFontSize(12),
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: getResponsiveMargin(4),
   },
   timeSlotContainer: {
@@ -205,13 +236,13 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   parkingTime: {
     fontSize: getResponsiveFontSize(14),
-    color: '#1F2937',
+    color: colors.text,
     flex: 1,
   },
   parkingPrice: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: '600',
-    color: '#1F2937',
+    color: colors.text,
     marginBottom: getResponsiveMargin(12),
   },
   parkingStatusContainer: {
@@ -227,40 +258,40 @@ export const favoritesScreenStyles = StyleSheet.create({
   removeButton: {
     padding: 8,
     borderRadius: 6,
-    backgroundColor: '#FFE5E5',
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   availableStatus: {
     fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: colors.success,
   },
   occupiedStatus: {
     fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
   },
   bookButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingHorizontal: getResponsivePadding(16),
     paddingVertical: getResponsivePadding(8),
     borderRadius: 6,
   },
   bookButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
   },
   // Vehicle Selection Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   vehicleSelectionModalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
     borderRadius: getResponsiveSize(16),
     padding: getResponsivePadding(24),
     margin: getResponsiveMargin(20),
@@ -277,7 +308,7 @@ export const favoritesScreenStyles = StyleSheet.create({
   vehicleModalTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#333333',
+    color: colors.text,
     flex: 1,
   },
   vehicleCardsContainer: {
@@ -286,11 +317,11 @@ export const favoritesScreenStyles = StyleSheet.create({
     marginBottom: getResponsiveMargin(20),
   },
   vehicleCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(12),
     padding: getResponsivePadding(16),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     alignItems: 'center',
     flex: 1,
     marginHorizontal: getResponsiveMargin(4),
@@ -298,10 +329,10 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   selectedVehicleCard: {
     borderWidth: 3,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
   },
   vehicleIconContainer: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(8),
     padding: getResponsivePadding(12),
     marginBottom: getResponsiveMargin(12),
@@ -312,41 +343,41 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   vehicleBrandLabel: {
     fontSize: getResponsiveFontSize(12),
-    color: '#999999',
+    color: colors.textMuted,
     marginBottom: getResponsiveMargin(4),
   },
   vehicleBrand: {
     fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
-    color: '#333333',
+    color: colors.text,
     marginBottom: getResponsiveMargin(8),
     textAlign: 'center',
   },
   vehicleDisplayLabel: {
     fontSize: getResponsiveFontSize(12),
-    color: '#999999',
+    color: colors.textMuted,
     marginBottom: getResponsiveMargin(4),
   },
   vehicleDisplayName: {
     fontSize: getResponsiveFontSize(14),
-    color: '#333333',
+    color: colors.text,
     marginBottom: getResponsiveMargin(8),
   },
   vehiclePlateLabel: {
     fontSize: getResponsiveFontSize(12),
-    color: '#999999',
+    color: colors.textMuted,
     marginBottom: getResponsiveMargin(4),
   },
   vehiclePlateNumber: {
     fontSize: getResponsiveFontSize(14),
-    color: '#333333',
+    color: colors.text,
   },
   progressIndicatorContainer: {
     marginBottom: getResponsiveMargin(20),
   },
   progressBar: {
     height: getResponsiveSize(4),
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.gray300,
     borderRadius: getResponsiveSize(2),
     overflow: 'hidden',
   },
@@ -354,7 +385,7 @@ export const favoritesScreenStyles = StyleSheet.create({
     position: 'absolute',
     width: getResponsiveSize(20),
     height: getResponsiveSize(8),
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(4),
     top: getResponsiveSize(-2),
   },
@@ -365,14 +396,14 @@ export const favoritesScreenStyles = StyleSheet.create({
     paddingHorizontal: getResponsivePadding(24),
   },
   bookNowButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingVertical: getResponsivePadding(16),
     paddingHorizontal: getResponsivePadding(24),
     borderRadius: getResponsiveSize(8),
     alignItems: 'center',
     marginBottom: getResponsiveMargin(16),
     width: '100%',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -382,12 +413,12 @@ export const favoritesScreenStyles = StyleSheet.create({
     elevation: 3,
   },
   bookNowButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
   },
   bookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: colors.gray400,
   },
   emptyFavoritesContainer: {
     flex: 1,
@@ -399,26 +430,26 @@ export const favoritesScreenStyles = StyleSheet.create({
   emptyFavoritesTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: getResponsiveMargin(12),
   },
   emptyFavoritesMessage: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: getResponsiveMargin(8),
     lineHeight: 24,
   },
   emptyFavoritesSubMessage: {
     fontSize: getResponsiveFontSize(14),
-    color: '#999',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
   },
   // Vehicle Mismatch Modal Styles
   mismatchModalContainer: {
-    backgroundColor: 'white',
+    backgroundColor: colors.background,
     borderRadius: getResponsiveSize(16),
     padding: getResponsivePadding(24),
     margin: getResponsiveMargin(20),
@@ -434,7 +465,7 @@ export const favoritesScreenStyles = StyleSheet.create({
   mismatchModalTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     flex: 1,
   },
   mismatchContent: {
@@ -442,13 +473,13 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   mismatchMessage: {
     fontSize: getResponsiveFontSize(16),
-    color: '#333',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: getResponsiveMargin(20),
     lineHeight: 24,
   },
   mismatchDetails: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: colors.card,
     borderRadius: getResponsiveSize(8),
     padding: getResponsivePadding(16),
     marginBottom: getResponsiveMargin(16),
@@ -461,52 +492,52 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   mismatchLabel: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   mismatchValue: {
     fontSize: getResponsiveFontSize(14),
-    color: '#8A0000',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   mismatchSuggestion: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 20,
   },
   mismatchCloseButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingVertical: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(24),
     borderRadius: getResponsiveSize(8),
     alignItems: 'center',
   },
   mismatchCloseButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
   // Vehicle Selection Modal Styles (from HomeScreen)
   vehicleTypeInfoContainer: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(8),
     padding: getResponsivePadding(12),
     marginBottom: getResponsiveMargin(16),
     borderLeftWidth: 4,
-    borderLeftColor: '#8A0000',
+    borderLeftColor: colors.primary,
   },
   vehicleTypeInfoText: {
     fontSize: getResponsiveFontSize(14),
-    color: '#4A5568',
+    color: colors.textSecondary,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   vehicleSelectionCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     borderRadius: getResponsiveSize(12),
     padding: getResponsivePadding(16),
     marginRight: getResponsiveMargin(12),
@@ -515,10 +546,10 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   vehicleSelectionCardSelected: {
     borderWidth: 3,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
   },
   vehicleSelectionIconContainer: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(8),
     padding: getResponsivePadding(12),
     alignItems: 'center',
@@ -530,13 +561,13 @@ export const favoritesScreenStyles = StyleSheet.create({
   },
   vehicleSelectionLabel: {
     fontSize: getResponsiveFontSize(10),
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(2),
   },
   vehicleSelectionValue: {
     fontSize: getResponsiveFontSize(12),
     fontWeight: 'bold',
-    color: '#000000',
+    color: colors.text,
     marginBottom: getResponsiveMargin(6),
   },
   vehicleSelectionProgressContainer: {
@@ -546,7 +577,7 @@ export const favoritesScreenStyles = StyleSheet.create({
   vehicleSelectionProgressTrack: {
     width: '100%',
     height: getResponsiveSize(4),
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.gray300,
     borderRadius: getResponsiveSize(2),
     position: 'relative',
   },
@@ -554,17 +585,17 @@ export const favoritesScreenStyles = StyleSheet.create({
     position: 'absolute',
     width: getResponsiveSize(20),
     height: getResponsiveSize(8),
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(4),
     top: getResponsiveSize(-2),
   },
   vehicleSelectionBookNowButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(8),
     paddingVertical: getResponsivePadding(16),
     paddingHorizontal: getResponsivePadding(32),
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -574,10 +605,10 @@ export const favoritesScreenStyles = StyleSheet.create({
     elevation: 3,
   },
   vehicleSelectionBookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: colors.gray400,
   },
   vehicleSelectionBookNowButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
@@ -590,15 +621,45 @@ export const favoritesScreenStyles = StyleSheet.create({
   noCompatibleVehiclesText: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: getResponsiveMargin(8),
   },
   noCompatibleVehiclesSubtext: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: getResponsiveFontSize(20),
   },
 });
+
+// Export default styles for backward compatibility (light theme)
+export const favoritesScreenStyles = getFavoritesScreenStyles({
+  background: '#383838',
+  backgroundSecondary: '#F0F8FF',
+  card: '#FFFFFF',
+  text: '#000000',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  textInverse: '#FFFFFF',
+  primary: '#8A0000',
+  primaryDark: '#800000',
+  primaryLight: '#ff4444',
+  border: '#E0E0E0',
+  shadow: '#000',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  success: '#4CAF50',
+  error: '#FF4444',
+  warning: '#FFA500',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#E0E0E0',
+  gray400: '#CCCCCC',
+  gray500: '#999999',
+  gray600: '#666666',
+  gray700: '#4B5563',
+  gray800: '#374151',
+  gray900: '#1F2937',
+} as ThemeColors);
 

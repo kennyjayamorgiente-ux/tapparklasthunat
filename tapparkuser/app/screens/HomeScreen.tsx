@@ -15,7 +15,6 @@ import {
   Alert, 
   StatusBar,
 } from 'react-native';
-import { SafeAreaView as SafeAreaViewContext } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SvgXml } from 'react-native-svg';
@@ -24,6 +23,7 @@ import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDrawer } from '../../contexts/DrawerContext';
 import { useLoading } from '../../contexts/LoadingContext';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import ApiService from '../../services/api';
 import { 
   lineGraphIconSvg, 
@@ -34,7 +34,7 @@ import {
   whiteMotorIconSvg,
   whiteEbikeIconSvg
 } from '../assets/icons/index2';
-import { homeScreenStyles } from '../styles/homeScreenStyles';
+import { getHomeScreenStyles } from '../styles/homeScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -85,6 +85,9 @@ export default function HomeScreen() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toggleDrawer } = useDrawer();
   const { showLoading, hideLoading } = useLoading();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
+  const homeScreenStyles = getHomeScreenStyles(colors);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -540,7 +543,7 @@ export default function HomeScreen() {
               text: 'OK',
               onPress: () => {
                 // Navigate to ActiveParkingScreen with complete booking details
-                showLoading('Loading parking session...');
+                showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
                 router.push({
                   pathname: '/screens/ActiveParkingScreen',
                   params: {
@@ -864,31 +867,28 @@ export default function HomeScreen() {
 
 
 
+  // Header Profile Picture component
+  const HeaderProfilePicture = () => (
+    <TouchableOpacity onPress={() => {
+      showLoading();
+      router.push('/ProfileScreen');
+      setTimeout(() => hideLoading(), 300);
+    }}>
+      <ProfilePicture size={32} />
+    </TouchableOpacity>
+  );
+
   return (
     <View style={homeScreenStyles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={true} />
-      <SafeAreaViewContext style={styles.headerSafeArea} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.menuButton} 
-            onPress={toggleDrawer}
-          >
-            <Ionicons name="menu" size={24} color="white" />
-          </TouchableOpacity>
-          
-          <Text style={styles.headerTitle}>TapPark</Text>
-          
-          <TouchableOpacity onPress={() => {
-            showLoading();
-            router.push('/ProfileScreen');
-            setTimeout(() => hideLoading(), 300);
-          }}>
-            <ProfilePicture size={36} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaViewContext>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} translucent={true} />
+      <SharedHeader 
+        title="TapPark" 
+        rightComponent={<HeaderProfilePicture />}
+      />
 
-      <ScrollView style={homeScreenStyles.scrollView} showsVerticalScrollIndicator={false}>
+      {/* ScrollView Container - targeted for loading overlay */}
+      <View style={homeScreenStyles.scrollViewContainer}>
+        <ScrollView style={homeScreenStyles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Main Slogan */}
         <View style={homeScreenStyles.sloganSection}>
           <Text style={homeScreenStyles.parkingText}>PARKING</Text>
@@ -907,7 +907,7 @@ export default function HomeScreen() {
           
           {isLoadingVehicles ? (
             <View style={homeScreenStyles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8A0000" />
+              <ActivityIndicator size="large" color={colors.primary} />
               <Text style={homeScreenStyles.loadingText}>Loading vehicles...</Text>
             </View>
           ) : vehicles.length === 0 ? (
@@ -1054,7 +1054,7 @@ export default function HomeScreen() {
           >
             {isLoadingFrequentSpots ? (
               <View style={homeScreenStyles.loadingContainer}>
-                <ActivityIndicator size="large" color="#8A0000" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={homeScreenStyles.loadingText}>Loading frequent spots...</Text>
               </View>
             ) : frequentSpots.length === 0 ? (
@@ -1171,6 +1171,7 @@ export default function HomeScreen() {
         </View>
 
       </ScrollView>
+      </View>
 
       {/* Parking Booking Modal */}
       <Modal
@@ -1186,7 +1187,7 @@ export default function HomeScreen() {
             
             {isLoadingParkingAreas ? (
               <View style={homeScreenStyles.loadingContainer}>
-                <ActivityIndicator size="large" color="#8A0000" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={homeScreenStyles.loadingText}>Loading parking areas...</Text>
               </View>
             ) : (
@@ -1238,7 +1239,7 @@ export default function HomeScreen() {
             
             {isLoadingParkingSpots ? (
               <View style={homeScreenStyles.loadingContainer}>
-                <ActivityIndicator size="large" color="#8A0000" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={homeScreenStyles.loadingText}>Assigning parking spot...</Text>
               </View>
             ) : (
@@ -1412,35 +1413,6 @@ export default function HomeScreen() {
 
 // Only keep unique styles that aren't in homeScreenStyles.ts
 const styles = StyleSheet.create({
-  headerSafeArea: {
-    backgroundColor: 'transparent',
-  },
-  header: {
-    backgroundColor: '#8A0000',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  menuButton: {
-    padding: 8,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    flex: 1,
-    textAlign: 'center',
-  },
   profilePicture: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderWidth: 2,

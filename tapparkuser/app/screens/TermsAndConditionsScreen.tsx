@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import SharedHeader from '../../components/SharedHeader';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   tapParkLogoSvg
@@ -61,6 +62,9 @@ const getResponsiveMargin = (baseMargin: number) => {
 
 const TermsAndConditionsScreen: React.FC = () => {
   const router = useRouter();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
+  const styles = getStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -194,10 +198,10 @@ const TermsAndConditionsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -219,15 +223,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getResponsiveSize(20),
     borderTopRightRadius: getResponsiveSize(20),
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getResponsivePadding(25),
     paddingBottom: 0,
     paddingHorizontal: getResponsivePadding(20),
     height: screenHeight * 0.80,
     zIndex: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -2,
@@ -257,13 +263,13 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(8),
     textAlign: 'center',
   },
   userEmail: {
     fontSize: getResponsiveFontSize(18),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   termsScroll: {
@@ -276,26 +282,26 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: getResponsivePadding(20),
   },
   dateInfo: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: colors.backgroundSecondary,
     padding: getResponsivePadding(15),
     borderRadius: getResponsiveSize(10),
     marginBottom: getResponsivePadding(20),
     borderLeftWidth: 4,
-    borderLeftColor: '#8A0000',
+    borderLeftColor: colors.primary,
   },
   dateText: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: getResponsivePadding(5),
   },
   introText: {
     fontSize: getResponsiveFontSize(16),
-    color: '#333',
+    color: colors.text,
     lineHeight: getResponsiveFontSize(24),
     marginBottom: getResponsivePadding(20),
     textAlign: 'justify',
@@ -306,26 +312,26 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(10),
   },
   sectionText: {
     fontSize: getResponsiveFontSize(15),
-    color: '#333',
+    color: colors.text,
     lineHeight: getResponsiveFontSize(22),
     marginBottom: getResponsivePadding(8),
     textAlign: 'justify',
   },
   bulletPoint: {
     fontSize: getResponsiveFontSize(15),
-    color: '#333',
+    color: colors.text,
     lineHeight: getResponsiveFontSize(22),
     marginBottom: getResponsivePadding(5),
     marginLeft: getResponsivePadding(10),
   },
   subBulletPoint: {
     fontSize: getResponsiveFontSize(14),
-    color: '#555',
+    color: colors.textMuted,
     lineHeight: getResponsiveFontSize(20),
     marginBottom: getResponsivePadding(3),
     marginLeft: getResponsivePadding(20),

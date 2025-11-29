@@ -8,12 +8,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import SharedHeader from '../../components/SharedHeader';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   tapParkLogoSvg,
   maroonSimpleArrowDownSvg
 } from '../assets/icons/index2';
-import { faqScreenStyles } from '../styles/faqScreenStyles';
+import { getFaqScreenStyles } from '../styles/faqScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -63,6 +64,9 @@ const getResponsiveMargin = (baseMargin: number) => {
 
 const FAQScreen = () => {
   const router = useRouter();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
+  const faqScreenStyles = getFaqScreenStyles(colors);
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
 
   const faqData = [

@@ -107,12 +107,6 @@ router.post('/register', registerValidation, async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 
-    // Store session
-    await db.query(`
-      INSERT INTO user_sessions (user_id, token_hash, expires_at)
-      VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))
-    `, [userId, jwt.sign({ userId }, process.env.JWT_SECRET)]);
-
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -192,17 +186,6 @@ router.post('/login', loginValidation, async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
-
-    // Store session
-    await db.query(`
-      INSERT INTO user_sessions (user_id, token_hash, expires_at, device_info, ip_address)
-      VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY), ?, ?)
-    `, [
-      user.user_id, 
-      jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET),
-      JSON.stringify({ userAgent: req.get('User-Agent') }),
-      req.ip || req.connection.remoteAddress
-    ]);
 
     // Remove password from response and format user data
     delete user.password;

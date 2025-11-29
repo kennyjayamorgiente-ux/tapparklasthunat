@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   tapParkLogoSvg,
@@ -26,7 +27,7 @@ import {
 } from '../assets/icons/index2';
 import { ApiService } from '../../services/api';
 import { useScreenDimensions } from '../../hooks/use-screen-dimensions';
-import { balanceScreenStyles } from '../styles/balanceScreenStyles';
+import { getBalanceScreenStyles } from '../styles/balanceScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -78,7 +79,10 @@ const getResponsiveMargin = (baseMargin: number) => {
 const BalanceScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
   const screenDimensions = useScreenDimensions();
+  const balanceScreenStyles = getBalanceScreenStyles(colors);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [subscriptionBalance, setSubscriptionBalance] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -289,12 +293,12 @@ const BalanceScreen: React.FC = () => {
           {/* Profile Picture Section */}
           <View style={balanceScreenStyles.profilePictureSection}>
             <View style={balanceScreenStyles.profilePictureContainer}>
-              <ProfilePicture size={screenDimensions.isTablet ? 140 : 120} />
+              <ProfilePicture size={screenDimensions.isTablet ? 170 : 150} />
             </View>
             <View style={balanceScreenStyles.userInfoContainer}>
               {isLoading ? (
                 <View style={balanceScreenStyles.loadingContainer}>
-                  <ActivityIndicator size="small" color="#8A0000" />
+                  <ActivityIndicator size="small" color={colors.primary} />
                   <Text style={balanceScreenStyles.loadingText}>Loading...</Text>
                 </View>
               ) : userProfile ? (
@@ -380,7 +384,7 @@ const BalanceScreen: React.FC = () => {
             
             {isLoading ? (
               <View style={balanceScreenStyles.transactionsLoadingContainer}>
-                <ActivityIndicator size="small" color="#8A0000" />
+                <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={balanceScreenStyles.transactionsLoadingText}>Loading transactions...</Text>
               </View>
             ) : transactions.length === 0 ? (

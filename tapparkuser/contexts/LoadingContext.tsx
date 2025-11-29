@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 interface LoadingContextType {
   isLoading: boolean;
   loadingMessage: string | null;
-  showLoading: (message?: string) => void;
+  targetRoute: string | null;
+  showLoading: (message?: string, targetRoute?: string) => void;
   hideLoading: () => void;
 }
 
@@ -24,15 +25,18 @@ interface LoadingProviderProps {
 export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [targetRoute, setTargetRoute] = useState<string | null>(null);
 
-  const showLoading = (message: string = 'Loading...') => {
+  const showLoading = (message: string = 'Loading...', targetRoute?: string) => {
     setLoadingMessage(message);
+    setTargetRoute(targetRoute || null);
     setIsLoading(true);
   };
 
   const hideLoading = () => {
     setIsLoading(false);
     setLoadingMessage(null);
+    setTargetRoute(null);
   };
 
   return (
@@ -40,6 +44,7 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
       value={{
         isLoading,
         loadingMessage,
+        targetRoute,
         showLoading,
         hideLoading,
       }}

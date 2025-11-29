@@ -18,6 +18,7 @@ import {
   maroonLockIconSvg
 } from '../assets/icons/index2';
 import { useAuth } from '../../contexts/AuthContext';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import ApiService from '../../services/api';
 import { useScreenDimensions } from '../../hooks/use-screen-dimensions';
 
@@ -70,11 +71,14 @@ const getResponsiveMargin = (baseMargin: number) => {
 const ChangePasswordScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
   const screenDimensions = useScreenDimensions();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const styles = getStyles(colors);
 
   // Profile picture component
   const ProfilePicture = ({ size = 120 }: { size?: number }) => {
@@ -273,10 +277,10 @@ const ChangePasswordScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: ReturnType<typeof useThemeColors>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -298,15 +302,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getResponsiveSize(20),
     borderTopRightRadius: getResponsiveSize(20),
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getResponsivePadding(25),
     paddingBottom: getResponsivePadding(35),
     paddingHorizontal: getResponsivePadding(20),
     minHeight: screenHeight * 0.7,
     zIndex: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -2,
@@ -334,14 +340,14 @@ const styles = StyleSheet.create({
     width: getResponsiveSize(100),
     height: getResponsiveSize(100),
     borderRadius: getResponsiveSize(50),
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderWidth: getResponsiveSize(3),
     borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitials: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -349,7 +355,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     width: getResponsiveSize(32),
     height: getResponsiveSize(32),
     borderRadius: getResponsiveSize(16),
@@ -361,13 +367,13 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: getResponsiveFontSize(28),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(8),
     textAlign: 'center',
   },
   userEmail: {
     fontSize: getResponsiveFontSize(18),
-    color: '#666666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   userInfoContainer: {
@@ -383,22 +389,22 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: getResponsiveFontSize(18),
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsivePadding(10),
     fontWeight: '500',
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     borderRadius: getResponsiveSize(10),
     paddingHorizontal: getResponsivePadding(18),
     paddingVertical: getResponsivePadding(18),
     fontSize: getResponsiveFontSize(18),
-    backgroundColor: 'white',
-    color: '#333',
+    backgroundColor: colors.card,
+    color: colors.text,
   },
   changePasswordButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -416,7 +422,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   changePasswordText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(18),
     fontWeight: '600',
     marginLeft: getResponsivePadding(10),

@@ -6,10 +6,41 @@ import {
   getAdaptiveMargin 
 } from '../../hooks/use-screen-dimensions';
 
-export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.create({
+// Type for theme colors
+type ThemeColors = {
+  background: string;
+  backgroundSecondary: string;
+  card: string;
+  profileCard: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  border: string;
+  shadow: string;
+  overlay: string;
+  success: string;
+  error: string;
+  warning: string;
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+};
+
+export const createHistoryScreenStyles = (screenDimensions: any, colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#383838',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flex: 1,
@@ -35,15 +66,17 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: colors.profileCard,
     borderTopLeftRadius: getAdaptiveSize(screenDimensions, 25),
     borderTopRightRadius: getAdaptiveSize(screenDimensions, 25),
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingTop: getAdaptivePadding(screenDimensions, 25),
     paddingBottom: 0,
     paddingHorizontal: getAdaptivePadding(screenDimensions, 20),
     height: screenDimensions.height * 0.80,
     zIndex: 2,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: -5,
@@ -65,22 +98,20 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     marginTop: -getAdaptiveSize(screenDimensions, 70),
     backgroundColor: 'transparent',
     borderRadius: getAdaptiveSize(screenDimensions, 90),
-    width: getAdaptiveSize(screenDimensions, 180),
-    height: getAdaptiveSize(screenDimensions, 180),
-    borderWidth: getAdaptiveSize(screenDimensions, 3),
-    borderColor: 'white',
+    width: getAdaptiveSize(screenDimensions, 200),
+    height: getAdaptiveSize(screenDimensions, 200),
     alignItems: 'center',
     justifyContent: 'center',
   },
   profilePicture: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitials: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: 'bold',
     textAlign: 'center',
   },
@@ -91,14 +122,14 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   userName: {
     fontSize: getAdaptiveFontSize(screenDimensions, 24),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getAdaptiveMargin(screenDimensions, 5),
     letterSpacing: 1,
     textAlign: 'center',
   },
   userEmail: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   spotsContainer: {
@@ -107,11 +138,11 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   spotsTitle: {
     fontSize: getAdaptiveFontSize(screenDimensions, 20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getAdaptiveMargin(screenDimensions, 20),
   },
   parkingCard: {
-    backgroundColor: '#fcfcfc',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
     borderColor: '#8A0000',
     borderRadius: 12,
@@ -138,13 +169,13 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   parkingLocation: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   parkingSpotId: {
     fontSize: getAdaptiveFontSize(screenDimensions, 18),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
   },
   logoIcon: {
@@ -154,7 +185,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   parkingLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   timeSlotContainer: {
@@ -162,30 +193,30 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   parkingTime: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#1F2937',
+    color: colors.text,
     flex: 1,
   },
   hoursDeductedText: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#8A0000',
+    color: colors.primary,
     fontWeight: '600',
     marginTop: getAdaptiveMargin(screenDimensions, 4),
   },
   durationText: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#666666',
+    color: colors.textSecondary,
     fontWeight: '500',
     marginTop: getAdaptiveMargin(screenDimensions, 2),
   },
   parkingPrice: {
     fontSize: getAdaptiveFontSize(screenDimensions, 16),
     fontWeight: '600',
-    color: '#1F2937',
+    color: colors.text,
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
   },
   historyDate: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
   },
   parkingStatusContainer: {
@@ -196,7 +227,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   completedStatus: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: colors.success,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -204,7 +235,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     gap: getAdaptiveMargin(screenDimensions, 8),
   },
   heartButton: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.backgroundSecondary,
     padding: getAdaptivePadding(screenDimensions, 8),
     borderRadius: getAdaptiveSize(screenDimensions, 6),
     alignItems: 'center',
@@ -246,7 +277,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   vehicleModalTitle: {
     fontSize: getAdaptiveFontSize(screenDimensions, 20),
     fontWeight: 'bold',
-    color: '#333333',
+    color: colors.text,
     flex: 1,
   },
   // Reservation Details Modal Styles
@@ -272,7 +303,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   reservationModalTitle: {
     fontSize: getAdaptiveFontSize(screenDimensions, 20),
     fontWeight: 'bold',
-    color: '#333333',
+    color: colors.text,
     flex: 1,
   },
   reservationModalContent: {
@@ -280,7 +311,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     minHeight: 200,
   },
   reservationDetailCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getAdaptiveSize(screenDimensions, 12),
     padding: getAdaptivePadding(screenDimensions, 20),
   },
@@ -293,12 +324,12 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   reservationLocation: {
     fontSize: getAdaptiveFontSize(screenDimensions, 18),
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: colors.text,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   reservationId: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#8A0000',
+    color: colors.primary,
     fontWeight: '600',
   },
   reservationDetailSection: {
@@ -307,17 +338,17 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   reservationDetailLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   reservationDetailValue: {
     fontSize: getAdaptiveFontSize(screenDimensions, 16),
-    color: '#1F2937',
+    color: colors.text,
     marginBottom: getAdaptiveMargin(screenDimensions, 2),
   },
   reservationDetailSubValue: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#6B7280',
+    color: colors.textSecondary,
     marginBottom: getAdaptiveMargin(screenDimensions, 2),
   },
   vehicleCardsContainer: {
@@ -326,7 +357,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     marginBottom: getAdaptiveMargin(screenDimensions, 20),
   },
   vehicleCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getAdaptiveSize(screenDimensions, 12),
     padding: getAdaptivePadding(screenDimensions, 16),
     borderWidth: 1,
@@ -352,41 +383,41 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   vehicleBrandLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#999999',
+    color: colors.textMuted,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   vehicleBrand: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
     fontWeight: 'bold',
-    color: '#333333',
+    color: colors.text,
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
     textAlign: 'center',
   },
   vehicleDisplayLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#999999',
+    color: colors.textMuted,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   vehicleDisplayName: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#333333',
+    color: colors.text,
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
   },
   vehiclePlateLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#999999',
+    color: colors.textMuted,
     marginBottom: getAdaptiveMargin(screenDimensions, 4),
   },
   vehiclePlateNumber: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#333333',
+    color: colors.text,
   },
   progressIndicatorContainer: {
     marginBottom: getAdaptiveMargin(screenDimensions, 20),
   },
   progressBar: {
     height: getAdaptiveSize(screenDimensions, 4),
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.gray300,
     borderRadius: getAdaptiveSize(screenDimensions, 2),
     overflow: 'hidden',
   },
@@ -412,7 +443,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     alignItems: 'center',
     marginBottom: getAdaptiveMargin(screenDimensions, 16),
     width: '100%',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -427,7 +458,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     fontWeight: 'bold',
   },
   bookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: colors.gray400,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -436,7 +467,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   loadingText: {
     fontSize: getAdaptiveFontSize(screenDimensions, 16),
-    color: '#8A0000',
+    color: colors.primary,
     marginTop: getAdaptiveMargin(screenDimensions, 10),
   },
   emptyContainer: {
@@ -447,16 +478,16 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   emptyText: {
     fontSize: getAdaptiveFontSize(screenDimensions, 18),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
   },
   emptySubtext: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   activeStatus: {
-    color: '#FF9800',
+    color: colors.warning,
   },
   timestampRow: {
     flexDirection: 'row',
@@ -466,12 +497,12 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   timestampLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   timestampValue: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
-    color: '#333333',
+    color: colors.text,
     fontWeight: '600',
   },
   timestampDetailRow: {
@@ -482,12 +513,12 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   timestampDetailLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   timestampDetailValue: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#333333',
+    color: colors.text,
     fontWeight: '600',
     flex: 1,
     textAlign: 'right',
@@ -495,10 +526,10 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   reservedStatus: {
     fontSize: getAdaptiveFontSize(screenDimensions, 12),
     fontWeight: 'bold',
-    color: '#FF9800',
+    color: colors.warning,
   },
   vehicleTypeInfoContainer: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getAdaptiveSize(screenDimensions, 8),
     padding: getAdaptivePadding(screenDimensions, 12),
     marginBottom: getAdaptiveMargin(screenDimensions, 16),
@@ -512,9 +543,9 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     textAlign: 'center',
   },
   vehicleSelectionCard: {
-    backgroundColor: 'white',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     borderRadius: getAdaptiveSize(screenDimensions, 12),
     padding: getAdaptivePadding(screenDimensions, 16),
     marginRight: getAdaptiveMargin(screenDimensions, 12),
@@ -538,7 +569,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   vehicleSelectionLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 10),
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getAdaptiveMargin(screenDimensions, 2),
   },
   vehicleSelectionValue: {
@@ -554,7 +585,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   vehicleSelectionProgressTrack: {
     width: '100%',
     height: getAdaptiveSize(screenDimensions, 4),
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.gray300,
     borderRadius: getAdaptiveSize(screenDimensions, 2),
     position: 'relative',
   },
@@ -572,7 +603,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     paddingVertical: getAdaptivePadding(screenDimensions, 16),
     paddingHorizontal: getAdaptivePadding(screenDimensions, 32),
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -582,7 +613,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
     elevation: 3,
   },
   vehicleSelectionBookNowButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: colors.gray400,
   },
   vehicleSelectionBookNowButtonText: {
     color: 'white',
@@ -597,13 +628,13 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   noCompatibleVehiclesText: {
     fontSize: getAdaptiveFontSize(screenDimensions, 16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: getAdaptiveMargin(screenDimensions, 8),
   },
   noCompatibleVehiclesSubtext: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: getAdaptiveFontSize(screenDimensions, 20),
   },
@@ -624,7 +655,7 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   mismatchModalTitle: {
     fontSize: getAdaptiveFontSize(screenDimensions, 20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     flex: 1,
   },
   mismatchContent: {
@@ -651,17 +682,17 @@ export const createHistoryScreenStyles = (screenDimensions: any) => StyleSheet.c
   },
   mismatchLabel: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   mismatchValue: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#8A0000',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   mismatchSuggestion: {
     fontSize: getAdaptiveFontSize(screenDimensions, 14),
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: getAdaptiveFontSize(screenDimensions, 20),

@@ -2,6 +2,36 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Type for theme colors
+type ThemeColors = {
+  background: string;
+  backgroundSecondary: string;
+  card: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  border: string;
+  shadow: string;
+  overlay: string;
+  success: string;
+  error: string;
+  warning: string;
+  gray50: string;
+  gray100: string;
+  gray200: string;
+  gray300: string;
+  gray400: string;
+  gray500: string;
+  gray600: string;
+  gray700: string;
+  gray800: string;
+  gray900: string;
+};
+
 // Enhanced responsive calculations
 const isSmallScreen = screenWidth < 375;
 const isMediumScreen = screenWidth >= 375 && screenWidth < 414;
@@ -46,10 +76,10 @@ const getResponsiveMargin = (baseMargin: number): number => {
 };
 
 
-export const activeParkingScreenStyles = StyleSheet.create({
+export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -58,9 +88,9 @@ export const activeParkingScreenStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12, // Match HomeScreen
     paddingBottom: 12,
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -73,7 +103,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',
+    color: colors.textInverse,
     flex: 1,
     textAlign: 'center',
   },
@@ -91,18 +121,18 @@ export const activeParkingScreenStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(15),
     textAlign: 'left',
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: getResponsiveSize(8),
     marginBottom: getResponsiveMargin(15),
     padding: getResponsivePadding(4),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     minHeight: getResponsiveSize(45),
   },
   tab: {
@@ -115,12 +145,12 @@ export const activeParkingScreenStyles = StyleSheet.create({
     minHeight: getResponsiveSize(42),
   },
   activeTab: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
   },
   tabText: {
     fontSize: isSmallScreen ? getResponsiveFontSize(10) : getResponsiveFontSize(12),
     fontWeight: '500',
-    color: '#666666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   activeTabText: {
@@ -130,14 +160,16 @@ export const activeParkingScreenStyles = StyleSheet.create({
     textAlign: 'center',
   },
   ticketContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(12),
     padding: getResponsivePadding(20),
     paddingBottom: getResponsivePadding(30),
     borderWidth: 1,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     flex: 1,
-    minHeight: getResponsiveSize(650),
+    minHeight: isSmallScreen ? getResponsiveSize(550) : isTablet ? getResponsiveSize(700) : getResponsiveSize(650),
+    maxWidth: '100%',
+    width: '100%',
   },
   qrSection: {
     alignItems: 'center',
@@ -147,13 +179,13 @@ export const activeParkingScreenStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   qrContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.backgroundSecondary,
     padding: getResponsivePadding(20),
     borderRadius: getResponsiveSize(8),
     marginTop: getResponsiveMargin(50),
     marginBottom: getResponsiveMargin(12),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: getResponsiveSize(250),
@@ -161,7 +193,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   qrInstruction: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     textAlign: 'center',
   },
   separator: {
@@ -189,37 +221,37 @@ export const activeParkingScreenStyles = StyleSheet.create({
   detailLabel: {
     fontSize: getResponsiveFontSize(14),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(4),
     textAlign: 'center',
   },
   detailValue: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
     flex: 1,
     textAlignVertical: 'center',
   },
   placeholderContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: getResponsiveSize(12),
     padding: getResponsivePadding(40),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     marginBottom: getResponsiveMargin(20),
   },
   placeholderText: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   favoritesButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingVertical: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(20),
     borderRadius: getResponsiveSize(8),
@@ -240,10 +272,10 @@ export const activeParkingScreenStyles = StyleSheet.create({
   qrPlaceholder: {
     width: isSmallScreen ? getResponsiveSize(200) : getResponsiveSize(240),
     height: isSmallScreen ? getResponsiveSize(200) : getResponsiveSize(240),
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.backgroundSecondary,
     borderRadius: getResponsiveSize(12),
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
@@ -256,12 +288,12 @@ export const activeParkingScreenStyles = StyleSheet.create({
   qrPlaceholderText: {
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(4),
   },
   qrPlaceholderSubtext: {
     fontSize: getResponsiveFontSize(12),
-    color: '#666666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   // Parking Time Tab Styles
@@ -285,9 +317,9 @@ export const activeParkingScreenStyles = StyleSheet.create({
     width: isSmallScreen ? getResponsiveSize(180) : getResponsiveSize(220),
     height: isSmallScreen ? getResponsiveSize(180) : getResponsiveSize(220),
     borderRadius: isSmallScreen ? getResponsiveSize(90) : getResponsiveSize(110),
-    backgroundColor: '#F0F0F0',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: getResponsiveSize(10),
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -325,10 +357,10 @@ export const activeParkingScreenStyles = StyleSheet.create({
     textAlign: 'center',
   },
   parkingDetailsCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: getResponsiveSize(16),
     borderWidth: 2,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
     padding: getResponsivePadding(20),
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -365,14 +397,14 @@ export const activeParkingScreenStyles = StyleSheet.create({
     lineHeight: 20,
   },
   goBackButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 8,
     alignItems: 'center',
   },
   goBackButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
@@ -380,10 +412,10 @@ export const activeParkingScreenStyles = StyleSheet.create({
   // Interactive Parking Layout Styles
   layoutContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.card,
     borderRadius: getResponsiveSize(12),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
     marginBottom: getResponsiveMargin(20),
   },
   layoutScrollContent: {
@@ -411,7 +443,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
     flex: 1,
   },
   refreshButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingHorizontal: getResponsivePadding(12),
     paddingVertical: getResponsivePadding(6),
     borderRadius: getResponsiveSize(6),
@@ -453,7 +485,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   parkingInfoTitle: {
     fontSize: getResponsiveFontSize(18),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(15),
     textAlign: 'center',
   },
@@ -463,7 +495,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
     padding: getResponsivePadding(15),
     marginBottom: getResponsiveMargin(20),
     borderWidth: 1,
-    borderColor: '#8A0000',
+    borderColor: colors.primary,
   },
   currentSpotHeader: {
     flexDirection: 'row',
@@ -474,7 +506,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   currentSpotTitle: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
   },
   statusIndicator: {
     width: getResponsiveSize(12),
@@ -490,7 +522,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   },
   spotDetailLabel: {
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
   },
   legendContainer: {
     marginBottom: getResponsiveMargin(20),
@@ -498,7 +530,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   legendTitle: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(10),
   },
   legendItems: {
@@ -528,7 +560,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   spotTypesTitle: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(10),
   },
   spotTypesItems: {
@@ -553,7 +585,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   statisticsTitle: {
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(10),
   },
   statisticsGrid: {
@@ -569,17 +601,17 @@ export const activeParkingScreenStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: getResponsiveMargin(8),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colors.border,
   },
   statisticNumber: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(4),
   },
   statisticLabel: {
     fontSize: getResponsiveFontSize(12),
-    color: '#666666',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   instructionsContainer: {
@@ -613,7 +645,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   spotModalTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     textAlign: 'center',
     marginBottom: getResponsiveMargin(20),
   },
@@ -633,7 +665,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   },
   spotModalValue: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
   },
   spotModalStatusContainer: {
     flexDirection: 'row',
@@ -647,17 +679,17 @@ export const activeParkingScreenStyles = StyleSheet.create({
   },
   spotModalStatusText: {
     fontSize: getResponsiveFontSize(16),
-    color: '#666666',
+    color: colors.textSecondary,
   },
   spotModalCloseButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     paddingVertical: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(20),
     borderRadius: getResponsiveSize(8),
     alignItems: 'center',
   },
   spotModalCloseText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
@@ -679,7 +711,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   parkingEndModalTitle: {
     fontSize: getResponsiveFontSize(20),
     fontWeight: 'bold',
-    color: '#8A0000',
+    color: colors.primary,
     marginBottom: getResponsiveMargin(20),
     textAlign: 'center',
   },
@@ -697,7 +729,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
   },
   parkingEndDetailLabel: {
     fontSize: getResponsiveFontSize(14),
-    color: '#666666',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   parkingEndDetailValue: {
@@ -706,7 +738,7 @@ export const activeParkingScreenStyles = StyleSheet.create({
     fontWeight: 'bold',
   },
   parkingEndModalButton: {
-    backgroundColor: '#8A0000',
+    backgroundColor: colors.primary,
     borderRadius: getResponsiveSize(8),
     paddingVertical: getResponsivePadding(12),
     paddingHorizontal: getResponsivePadding(32),
@@ -714,8 +746,38 @@ export const activeParkingScreenStyles = StyleSheet.create({
     alignItems: 'center',
   },
   parkingEndModalButtonText: {
-    color: 'white',
+    color: colors.textInverse,
     fontSize: getResponsiveFontSize(16),
     fontWeight: 'bold',
   },
 });
+
+// Export default styles for backward compatibility (light theme)
+export const activeParkingScreenStyles = getActiveParkingScreenStyles({
+  background: '#F5F7FA',
+  backgroundSecondary: '#F0F0F0',
+  card: '#FFFFFF',
+  text: '#000000',
+  textSecondary: '#666666',
+  textMuted: '#999999',
+  textInverse: '#FFFFFF',
+  primary: '#8A0000',
+  primaryDark: '#800000',
+  primaryLight: '#ff4444',
+  border: '#E0E0E0',
+  shadow: '#000',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  success: '#4CAF50',
+  error: '#FF4444',
+  warning: '#FFA500',
+  gray50: '#F9FAFB',
+  gray100: '#F3F4F6',
+  gray200: '#E5E7EB',
+  gray300: '#E0E0E0',
+  gray400: '#CCCCCC',
+  gray500: '#999999',
+  gray600: '#666666',
+  gray700: '#4B5563',
+  gray800: '#374151',
+  gray900: '#1F2937',
+} as ThemeColors);

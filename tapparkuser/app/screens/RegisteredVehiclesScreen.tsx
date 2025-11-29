@@ -13,7 +13,8 @@ import {
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import SharedHeader from '../../components/SharedHeader';
-import { registeredVehiclesScreenStyles } from '../styles/registeredVehiclesScreenStyles';
+import { getRegisteredVehiclesScreenStyles } from '../styles/registeredVehiclesScreenStyles';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { SvgXml } from 'react-native-svg';
 import {
   maroonUsersEditIconSvg,
@@ -76,7 +77,10 @@ const getResponsiveMargin = (baseMargin: number) => {
 const RegisteredVehiclesScreen: React.FC = () => {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
   const screenDimensions = useScreenDimensions();
+  const registeredVehiclesScreenStyles = getRegisteredVehiclesScreenStyles(colors);
 
   // Scroll progress refs for each vehicle category
   const carScrollProgress = useRef(new Animated.Value(0)).current;
@@ -229,7 +233,7 @@ const RegisteredVehiclesScreen: React.FC = () => {
           {/* Profile Picture Section */}
           <View style={registeredVehiclesScreenStyles.fixedProfileSection}>
             <View style={registeredVehiclesScreenStyles.profilePictureContainer}>
-              <ProfilePicture size={screenDimensions.isTablet ? 140 : 120} />
+              <ProfilePicture size={screenDimensions.isTablet ? 170 : 150} />
             </View>
 
             <View style={registeredVehiclesScreenStyles.userInfoContainer}>
@@ -246,7 +250,7 @@ const RegisteredVehiclesScreen: React.FC = () => {
             {/* Loading State */}
             {isLoading ? (
               <View style={{ padding: 20, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#8A0000" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={{ marginTop: 10, color: '#666' }}>Loading vehicles...</Text>
               </View>
             ) : vehicles.length === 0 ? (

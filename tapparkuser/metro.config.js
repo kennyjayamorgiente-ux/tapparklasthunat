@@ -2,9 +2,6 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// Add resolver configuration to handle the InternalBytecode.js issue
-config.resolver.platforms = ['ios', 'android', 'native', 'web'];
-
 // Configure transformer to handle source maps properly
 config.transformer.minifierConfig = {
   keep_fnames: true,
@@ -13,12 +10,40 @@ config.transformer.minifierConfig = {
   },
 };
 
-// Add resolver configuration to ignore problematic files
-config.resolver.blacklistRE = /InternalBytecode\.js$/;
+// Block InternalBytecode.js from being resolved (this is a Metro symbolication issue)
+// The InternalBytecode.js error occurs when Metro tries to symbolicate stack traces
+// from native code but can't find the source file. This is a known Metro issue.
+config.resolver.blockList = [
+  /InternalBytecode\.js$/,
+  /.*InternalBytecode\.js$/,
+  ...(Array.isArray(config.resolver.blockList) ? config.resolver.blockList : []),
+];
 
-// Prevent creation of InternalBytecode.js
-config.resolver.sourceExts = config.resolver.sourceExts.filter(ext => ext !== 'js');
-config.resolver.sourceExts.push('js');
+// Also configure transformer to ignore InternalBytecode.js
+config.transformer = {
+  ...config.transformer,
+  getTransformOptions: async () => ({
+    transform: {
+      experimentalImportSupport: false,
+      inlineRequires: true,
+    },
+  }),
+};
+
+// Disable source map symbolication for InternalBytecode.js to prevent errors
+// This prevents Metro from trying to read the file during symbolication
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => {
+    return (req, res, next) => {
+      // Skip symbolication requests for InternalBytecode.js
+      if (req.url && req.url.includes('InternalBytecode.js')) {
+        return res.status(404).end();
+      }
+      return middleware(req, res, next);
+    };
+  },
+};
 
 module.exports = config;
 

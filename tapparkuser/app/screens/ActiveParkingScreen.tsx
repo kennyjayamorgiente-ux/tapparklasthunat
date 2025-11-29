@@ -16,12 +16,16 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import SharedHeader from '../../components/SharedHeader';
 import InteractiveParkingLayout from '../../components/InteractiveParkingLayout';
-import { activeParkingScreenStyles } from '../styles/activeParkingScreenStyles';
+import { getActiveParkingScreenStyles } from '../styles/activeParkingScreenStyles';
+import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import ApiService from '../../services/api';
 
 const ActiveParkingScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
+  const activeParkingScreenStyles = getActiveParkingScreenStyles(colors);
   const [activeTab, setActiveTab] = useState('ticket');
   
   // Booking data state
@@ -519,7 +523,7 @@ const ActiveParkingScreen: React.FC = () => {
           title="Active Parking"
         />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={{ marginTop: 16, fontSize: 16, color: '#666' }}>
             Loading booking details...
           </Text>
@@ -720,7 +724,7 @@ const ActiveParkingScreen: React.FC = () => {
           <View style={activeParkingScreenStyles.layoutContainer}>
             {isLoadingSvg ? (
               <View style={activeParkingScreenStyles.emptyStateContainer}>
-                <ActivityIndicator size="large" color="#8A0000" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={activeParkingScreenStyles.emptyStateMessage}>
                   Loading parking layout...
                 </Text>

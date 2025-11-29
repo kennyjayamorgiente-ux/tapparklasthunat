@@ -17,7 +17,8 @@ import * as ImagePicker from 'expo-image-picker';
 import SharedHeader from '../components/SharedHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
-import { profileScreenStyles } from './styles/profileScreenStyles';
+import { useThemeColors, useTheme } from '../contexts/ThemeContext';
+import { getProfileScreenStyles } from './styles/profileScreenStyles';
 import { 
   maroonLockIconSvg,
   maroonNewCarIconSvg,
@@ -35,6 +36,9 @@ const ProfileScreen: React.FC = () => {
   const router = useRouter();
   const { user, checkAuthStatus } = useAuth();
   const { showLoading, hideLoading } = useLoading();
+  const colors = useThemeColors();
+  const { isDarkMode } = useTheme();
+  const profileScreenStyles = getProfileScreenStyles(colors);
   const refreshAuth = React.useMemo(() => (
     typeof checkAuthStatus === 'function'
       ? checkAuthStatus
@@ -350,11 +354,11 @@ const ProfileScreen: React.FC = () => {
           <View style={profileScreenStyles.profilePictureSection}>
             <View style={profileScreenStyles.profilePictureContainer}>
               {uploading ? (
-                <View style={{ width: screenDimensions.isTablet ? 140 : 120, height: screenDimensions.isTablet ? 140 : 120, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="large" color="#8A0000" />
+                <View style={{ width: screenDimensions.isTablet ? 170 : 150, height: screenDimensions.isTablet ? 170 : 150, justifyContent: 'center', alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={colors.primary} />
                 </View>
               ) : (
-                <ProfilePicture size={screenDimensions.isTablet ? 140 : 120} />
+                <ProfilePicture size={screenDimensions.isTablet ? 170 : 150} />
               )}
               <TouchableOpacity 
                 style={profileScreenStyles.editIconContainer} 
@@ -371,7 +375,7 @@ const ProfileScreen: React.FC = () => {
             
             {isLoading ? (
               <View style={profileScreenStyles.loadingContainer}>
-                <ActivityIndicator size="small" color="#8A0000" />
+                <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={profileScreenStyles.loadingText}>Loading profile...</Text>
               </View>
             ) : userProfile ? (
