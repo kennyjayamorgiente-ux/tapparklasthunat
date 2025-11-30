@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import SharedHeader from '../../components/SharedHeader';
 import { getRegisteredVehiclesScreenStyles } from '../styles/registeredVehiclesScreenStyles';
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import { SvgXml } from 'react-native-svg';
 import {
   maroonUsersEditIconSvg,
@@ -77,6 +78,7 @@ const getResponsiveMargin = (baseMargin: number) => {
 const RegisteredVehiclesScreen: React.FC = () => {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { showLoading, hideLoading } = useLoading();
   const colors = useThemeColors();
   const { isDarkMode } = useTheme();
   const screenDimensions = useScreenDimensions();
@@ -223,7 +225,11 @@ const RegisteredVehiclesScreen: React.FC = () => {
       <SharedHeader
         title="Vehicles"
         showBackButton={true}
-        onBackPress={() => router.back()}
+        onBackPress={() => {
+          showLoading();
+          router.back();
+          setTimeout(() => hideLoading(), 500);
+        }}
       />
 
       <View style={registeredVehiclesScreenStyles.scrollContainer}>

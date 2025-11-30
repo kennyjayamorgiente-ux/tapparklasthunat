@@ -19,6 +19,7 @@ import {
 } from '../assets/icons/index2';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import ApiService from '../../services/api';
 import { useScreenDimensions } from '../../hooks/use-screen-dimensions';
 
@@ -72,6 +73,7 @@ const ChangePasswordScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
   const colors = useThemeColors();
+  const { showLoading, hideLoading } = useLoading();
   const { isDarkMode } = useTheme();
   const screenDimensions = useScreenDimensions();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -188,7 +190,15 @@ const ChangePasswordScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <SharedHeader title="Change Password" showBackButton onBackPress={() => router.back()} />
+      <SharedHeader 
+        title="Change Password" 
+        showBackButton 
+        onBackPress={() => {
+          showLoading();
+          router.back();
+          setTimeout(() => hideLoading(), 500);
+        }} 
+      />
 
       <View style={styles.scrollContainer}>
 

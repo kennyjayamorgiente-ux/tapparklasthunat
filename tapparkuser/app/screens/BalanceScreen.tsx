@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import SharedHeader from '../../components/SharedHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   tapParkLogoSvg,
@@ -81,6 +82,7 @@ const BalanceScreen: React.FC = () => {
   const { user } = useAuth();
   const colors = useThemeColors();
   const { isDarkMode } = useTheme();
+  const { showLoading, hideLoading } = useLoading();
   const screenDimensions = useScreenDimensions();
   const balanceScreenStyles = getBalanceScreenStyles(colors);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -279,7 +281,11 @@ const BalanceScreen: React.FC = () => {
       <SharedHeader 
         title="Balance" 
         showBackButton={true}
-        onBackPress={() => router.back()}
+        onBackPress={() => {
+          showLoading();
+          router.back();
+          setTimeout(() => hideLoading(), 500);
+        }}
       />
       
       <ScrollView 
@@ -366,7 +372,7 @@ const BalanceScreen: React.FC = () => {
                 style={balanceScreenStyles.topUpButton}
                 onPress={() => router.push('/screens/TopUpScreen')}
               >
-                <Text style={balanceScreenStyles.topUpText}>+ TOP UP</Text>
+                <Text style={balanceScreenStyles.topUpText}>+ ADD HOURS</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -467,7 +473,7 @@ const BalanceScreen: React.FC = () => {
                     />
                     <Text style={balanceScreenStyles.detailValue}>
                       {selectedTransaction.type === 'parking' ? 'Parking Session' : 
-                       selectedTransaction.payment_type === 'subscription' ? 'Top Up' : 'Payment'}
+                       selectedTransaction.payment_type === 'subscription' ? 'Add Hours' : 'Payment'}
                     </Text>
                   </View>
                 </View>

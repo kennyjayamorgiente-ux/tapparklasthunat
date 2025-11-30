@@ -144,7 +144,7 @@ const ProfileScreen: React.FC = () => {
       onPress: () => {
         showLoading();
         router.push('/screens/ChangePasswordScreen');
-        setTimeout(() => hideLoading(), 300);
+        setTimeout(() => hideLoading(), 500);
       }
     },
     {
@@ -154,7 +154,7 @@ const ProfileScreen: React.FC = () => {
       onPress: () => {
         showLoading();
         router.push('/screens/RegisteredVehiclesScreen');
-        setTimeout(() => hideLoading(), 300);
+        setTimeout(() => hideLoading(), 500);
       }
     },
     {
@@ -164,7 +164,7 @@ const ProfileScreen: React.FC = () => {
       onPress: () => {
         showLoading();
         router.push('/screens/TermsAndConditionsScreen');
-        setTimeout(() => hideLoading(), 300);
+        setTimeout(() => hideLoading(), 500);
       }
     },
     {
@@ -174,7 +174,7 @@ const ProfileScreen: React.FC = () => {
       onPress: () => {
         showLoading();
         router.push('/screens/BalanceScreen');
-        setTimeout(() => hideLoading(), 300);
+        setTimeout(() => hideLoading(), 500);
       }
     },
     {
@@ -184,7 +184,7 @@ const ProfileScreen: React.FC = () => {
       onPress: () => {
         showLoading();
         router.push('/screens/FAQScreen');
-        setTimeout(() => hideLoading(), 300);
+        setTimeout(() => hideLoading(), 500);
       }
     }
   ];
@@ -418,7 +418,10 @@ const ProfileScreen: React.FC = () => {
               width={screenDimensions.isTablet ? 24 : 20}
               height={screenDimensions.isTablet ? 24 : 20}
             />
-            <Text style={profileScreenStyles.helpButtonText}>How can we help you?</Text>
+            <Text style={[
+              profileScreenStyles.helpButtonText,
+              isDarkMode && { color: '#FFFFFF' }
+            ]}>How can we help you?</Text>
           </TouchableOpacity>
         </View>
       </View>

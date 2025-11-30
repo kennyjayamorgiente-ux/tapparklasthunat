@@ -9,6 +9,7 @@ import {
 import { useRouter } from 'expo-router';
 import SharedHeader from '../../components/SharedHeader';
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
+import { useLoading } from '../../contexts/LoadingContext';
 import { SvgXml } from 'react-native-svg';
 import { 
   tapParkLogoSvg
@@ -71,7 +72,11 @@ const TermsAndConditionsScreen: React.FC = () => {
       <SharedHeader 
         title="Terms & Conditions" 
         showBackButton={true}
-        onBackPress={() => router.back()}
+        onBackPress={() => {
+          showLoading();
+          router.back();
+          setTimeout(() => hideLoading(), 500);
+        }}
       />
       
       <View style={styles.scrollContainer}>

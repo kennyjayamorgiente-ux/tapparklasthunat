@@ -119,7 +119,7 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
     paddingBottom: getResponsivePadding(80), // Increased bottom padding to compensate for removing SafeAreaView
   },
   sectionTitle: {
-    fontSize: getResponsiveFontSize(20),
+    fontSize: getResponsiveFontSize(24),
     fontWeight: 'bold',
     color: colors.primary,
     marginBottom: getResponsiveMargin(15),
@@ -133,22 +133,22 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
     padding: getResponsivePadding(4),
     borderWidth: 1,
     borderColor: colors.border,
-    minHeight: getResponsiveSize(45),
+    minHeight: getResponsiveSize(52),
   },
   tab: {
     flex: 1,
-    paddingVertical: getResponsivePadding(8),
+    paddingVertical: getResponsivePadding(10),
     paddingHorizontal: getResponsivePadding(8),
     borderRadius: getResponsiveSize(6),
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: getResponsiveSize(42),
+    minHeight: getResponsiveSize(48),
   },
   activeTab: {
     backgroundColor: colors.primary,
   },
   tabText: {
-    fontSize: isSmallScreen ? getResponsiveFontSize(10) : getResponsiveFontSize(12),
+    fontSize: isSmallScreen ? getResponsiveFontSize(12) : getResponsiveFontSize(14),
     fontWeight: '500',
     color: colors.textSecondary,
     textAlign: 'center',
@@ -156,7 +156,7 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
   activeTabText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: isSmallScreen ? getResponsiveFontSize(10) : getResponsiveFontSize(12),
+    fontSize: isSmallScreen ? getResponsiveFontSize(12) : getResponsiveFontSize(14),
     textAlign: 'center',
   },
   ticketContainer: {
@@ -343,7 +343,7 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
   timerText: {
     fontSize: getResponsiveFontSize(36),
     fontWeight: 'bold',
-    color: '#333333',
+    color: '#FFFFFF',
     marginBottom: getResponsiveMargin(8),
   },
   timerLabels: {
@@ -353,7 +353,7 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
   },
   timerLabel: {
     fontSize: getResponsiveFontSize(16),
-    color: '#999999',
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   parkingDetailsCard: {
@@ -423,11 +423,14 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
   },
   svgContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: getResponsiveMargin(20),
     backgroundColor: '#F8F9FA',
     borderRadius: getResponsiveSize(8),
     padding: getResponsivePadding(20),
-    minHeight: 850,
+    minHeight: getResponsiveSize(400),
+    maxHeight: getResponsiveSize(600),
+    overflow: 'hidden',
   },
   layoutHeader: {
     flexDirection: 'row',

@@ -5,18 +5,18 @@ import { Platform, NativeModules } from 'react-native';
 export const API_CONFIG = {
   // Your computer's IP address (from ipconfig)
   // Update this if your IP changes
-  COMPUTER_IP: '192.168.1.22', // Updated to match detected IP
+  COMPUTER_IP: '192.168.1.6', // Updated to match detected IP
   
   // API Base URLs
   LOCALHOST: 'http://localhost:3000/api',
-  NETWORK: 'http://192.168.1.22:3000/api', // Updated to match detected IP
+  NETWORK: 'http://192.168.1.6:3000/api', // Updated to match detected IP
   
   // Current environment
   // Change this to 'network' when testing on physical device
   ENVIRONMENT: 'network' as 'localhost' | 'network',
 
   // Set to true to auto-detect IP from Expo, false to use COMPUTER_IP above
-  AUTO_DETECT: false, // Set to true to use detected IP automatically
+  AUTO_DETECT: true, // Set to true to use detected IP automatically
 };
 
 const API_PORT = 3000;
@@ -75,21 +75,29 @@ export const getApiUrl = () => {
     console.log('[API CONFIG] detectedHost via Expo:', getExpoDetectedHost());
     console.log('[API CONFIG] detectedHost via SourceModule:', getSourceModuleHost());
     console.log('[API CONFIG] configured NETWORK host:', API_CONFIG.NETWORK);
+    console.log('[API CONFIG] Final detectedHost:', detectedHost);
   }
 
-  if (API_CONFIG.AUTO_DETECT) {
-    if (__DEV__ && detectedHost) {
-      return buildUrlFromHost(detectedHost);
+  if (API_CONFIG.AUTO_DETECT && detectedHost) {
+    const finalUrl = buildUrlFromHost(detectedHost);
+    if (__DEV__) {
+      console.log('[API CONFIG] ✅ Using AUTO_DETECT URL:', finalUrl);
     }
-
-    if (detectedHost) {
-      return buildUrlFromHost(detectedHost);
-    }
+    return finalUrl;
   }
 
-  return API_CONFIG.ENVIRONMENT === 'network' 
+  const fallbackUrl = API_CONFIG.ENVIRONMENT === 'network' 
     ? API_CONFIG.NETWORK 
     : API_CONFIG.LOCALHOST;
+  
+  if (__DEV__) {
+    console.log('[API CONFIG] ⚠️ Using fallback URL:', fallbackUrl);
+    if (API_CONFIG.AUTO_DETECT && !detectedHost) {
+      console.warn('[API CONFIG] ⚠️ AUTO_DETECT is enabled but no host detected. Using configured IP.');
+    }
+  }
+
+  return fallbackUrl;
 };
 
 export default API_CONFIG;

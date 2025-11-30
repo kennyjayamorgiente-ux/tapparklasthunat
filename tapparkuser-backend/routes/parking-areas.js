@@ -330,13 +330,100 @@ router.get('/area/:areaId/layout', authenticateToken, async (req, res) => {
     
     if (area.layout_data) {
       try {
-        const layoutData = JSON.parse(area.layout_data);
-        if (layoutData.svg_data) {
+        // Handle both string and already-parsed object cases
+        let layoutData;
+        if (typeof area.layout_data === 'string') {
+          layoutData = JSON.parse(area.layout_data);
+        } else {
+          layoutData = area.layout_data;
+        }
+        
+        if (layoutData && layoutData.svg_data) {
           layoutSvg = layoutData.svg_data;
           hasLayout = true;
+          console.log('✅ Successfully extracted SVG, length:', layoutSvg.length);
+        } else {
+          console.log('⚠️ Layout data exists but no svg_data field found');
         }
       } catch (parseError) {
-        console.error('Error parsing layout data:', parseError);
+        // Try to extract SVG directly using regex as fallback
+        if (area.layout_data && typeof area.layout_data === 'string') {
+          // Method 1: Try to find SVG tag directly (most reliable for malformed JSON)
+          // This works best when JSON is broken but SVG content is intact
+          const svgMatch = area.layout_data.match(/<svg[\s\S]*?<\/svg>/);
+          if (svgMatch && svgMatch[0].length > 100) {
+            layoutSvg = svgMatch[0];
+            hasLayout = true;
+            // Silent success - no console log needed
+          } else {
+            // Method 2: Try to find svg_data field with proper handling of escaped quotes
+            let svgDataMatch = area.layout_data.match(/"svg_data"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            
+            if (svgDataMatch && svgDataMatch[1].length > 100) {
+              // Unescape the SVG string from method 2
+              layoutSvg = svgDataMatch[1]
+                .replace(/\\"/g, '"')
+                .replace(/\\n/g, '\n')
+                .replace(/\\t/g, '\t')
+                .replace(/\\r/g, '\r')
+                .replace(/\\\\/g, '\\');
+              hasLayout = true;
+              // Silent success - no console log needed
+            } else {
+              // Method 3: Manual parsing as last resort (only use if substantial)
+              const svgDataStart = area.layout_data.indexOf('"svg_data"');
+              if (svgDataStart !== -1) {
+                const colonIndex = area.layout_data.indexOf(':', svgDataStart);
+                if (colonIndex !== -1) {
+                  let searchStart = colonIndex + 1;
+                  while (searchStart < area.layout_data.length && /\s/.test(area.layout_data[searchStart])) {
+                    searchStart++;
+                  }
+                  const valueStart = area.layout_data.indexOf('"', searchStart) + 1;
+                  if (valueStart > 0 && valueStart < area.layout_data.length) {
+                    let valueEnd = valueStart;
+                    let escaped = false;
+                    while (valueEnd < area.layout_data.length) {
+                      const char = area.layout_data[valueEnd];
+                      if (char === '\\' && !escaped) {
+                        escaped = true;
+                        valueEnd++;
+                      } else if (char === '"' && !escaped) {
+                        break;
+                      } else {
+                        escaped = false;
+                        valueEnd++;
+                      }
+                    }
+                    if (valueEnd > valueStart) {
+                      const svgString = area.layout_data.substring(valueStart, valueEnd);
+                      const unescapedSvg = svgString
+                        .replace(/\\"/g, '"')
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\t/g, '\t')
+                        .replace(/\\r/g, '\r')
+                        .replace(/\\\\/g, '\\');
+                      // Only use if it's substantial (more than 100 chars)
+                      if (unescapedSvg.length > 100) {
+                        layoutSvg = unescapedSvg;
+                        hasLayout = true;
+                        // Silent success - no console log needed
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          if (!hasLayout) {
+            // Only log as error if we couldn't extract anything
+            const errorPos = parseError.message.match(/position (\d+)/)?.[1] || 'unknown';
+            console.error('❌ Error parsing layout data:', parseError.message);
+            console.error('📄 Error at position:', errorPos);
+            console.error('❌ Could not extract SVG from malformed JSON');
+          }
+        }
       }
     }
 

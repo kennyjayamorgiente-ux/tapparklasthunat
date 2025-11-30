@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { View } from 'react-native';
 import { DrawerProvider } from '../contexts/DrawerContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import { LoadingProvider } from '../contexts/LoadingContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
+import { ThemeProvider, useThemeColors } from '../contexts/ThemeContext';
 import CustomDrawer from '../components/CustomDrawer';
 import GlobalSpinner from '../components/GlobalSpinner';
 import { useDrawer } from '../contexts/DrawerContext';
@@ -17,6 +18,9 @@ function RootLayoutNav() {
 				screenOptions={{
 					headerShown: false,
 					animation: 'fade',
+					contentStyle: {
+						backgroundColor: 'transparent',
+					},
 				}}
 			>
 				<Stack.Screen 
@@ -31,16 +35,31 @@ function RootLayoutNav() {
 				<Stack.Screen 
 					name="screens/TermsAndConditionsScreen" 
 					options={{
-						presentation: 'modal',
-						animation: 'slide_from_bottom',
+						animation: 'fade',
 					}}
 				/>
-				<Stack.Screen name="screens/BalanceScreen" />
+				<Stack.Screen 
+					name="screens/BalanceScreen" 
+					options={{
+						animation: 'fade',
+					}}
+				/>
 				<Stack.Screen 
 					name="screens/FAQScreen" 
 					options={{
-						presentation: 'modal',
-						animation: 'slide_from_bottom',
+						animation: 'fade',
+					}}
+				/>
+				<Stack.Screen 
+					name="screens/ChangePasswordScreen" 
+					options={{
+						animation: 'fade',
+					}}
+				/>
+				<Stack.Screen 
+					name="screens/RegisteredVehiclesScreen" 
+					options={{
+						animation: 'fade',
 					}}
 				/>
 				<Stack.Screen 
@@ -62,15 +81,25 @@ function RootLayoutNav() {
 	);
 }
 
+function ThemedRootLayout() {
+	const colors = useThemeColors();
+	
+	return (
+		<View style={{ flex: 1, backgroundColor: colors.background }}>
+			<RootLayoutNav />
+			<GlobalSpinner />
+		</View>
+	);
+}
+
 export default function RootLayout() {
 	return (
-		<GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+		<GestureHandlerRootView style={{ flex: 1 }}>
 			<ThemeProvider>
 				<AuthProvider>
 					<LoadingProvider>
 						<DrawerProvider>
-							<RootLayoutNav />
-							<GlobalSpinner />
+							<ThemedRootLayout />
 						</DrawerProvider>
 					</LoadingProvider>
 				</AuthProvider>

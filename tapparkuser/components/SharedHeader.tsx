@@ -95,7 +95,7 @@ const SharedHeader: React.FC<SharedHeaderProps> = ({
   const minComfortableHeight = getAdaptiveSize(screenDimensions, 56); // Minimum comfortable header height
   const calculatedHeight = buttonSize + paddingVertical;
   const actualHeaderHeight = Math.max(calculatedHeight, minComfortableHeight); // Use the larger value
-  
+
   return (
     <SafeAreaView style={dynamicStyles.safeArea} edges={['top']}>
       <View style={[dynamicStyles.header, { 

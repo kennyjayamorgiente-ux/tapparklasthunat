@@ -254,7 +254,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
         >
           {/* Header */}
           <SharedHeader 
-            title="TapPark" 
+            title="TapPark"
             showBackButton={true}
             onBackPress={onClose}
             leftIcon="close"
@@ -283,6 +283,7 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
                           style={[
                             dynamicStyles.menuText,
                             isActive && dynamicStyles.activeMenuText,
+                            isActive && isDarkMode && { color: '#FFFFFF' },
                           ]}
                         >
                           {item.text}
@@ -300,11 +301,19 @@ const CustomDrawer: React.FC<CustomDrawerProps> = ({ isOpen, onClose }) => {
                   <TouchableOpacity style={dynamicStyles.themeToggle} onPress={toggleTheme}>
                     <View style={[dynamicStyles.themeToggleTrack, isDarkMode && dynamicStyles.themeToggleTrackDark]}>
                       <View style={[dynamicStyles.themeToggleThumb, isDarkMode && dynamicStyles.themeToggleThumbDark]}>
-                        <SvgXml 
-                          xml={isDarkMode ? blackDarkIconSvg : blackLightIconSvg} 
-                          width={getResponsiveSize(16)} 
-                          height={getResponsiveSize(16)} 
-                        />
+                        {isDarkMode ? (
+                          <Ionicons 
+                            name="moon" 
+                            size={getResponsiveSize(16)} 
+                            color="#FFFFFF" 
+                          />
+                        ) : (
+                          <SvgXml 
+                            xml={blackLightIconSvg} 
+                            width={getResponsiveSize(16)} 
+                            height={getResponsiveSize(16)} 
+                          />
+                        )}
                       </View>
                     </View>
                   </TouchableOpacity>

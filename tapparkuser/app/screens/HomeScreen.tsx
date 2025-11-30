@@ -1106,8 +1106,8 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Scroll Indicator Section - Only show when 3+ frequent spots and content overflows */}
-        {!isLoadingFrequentSpots && frequentSpots.length >= 3 && canScrollFrequentSpots && (
+        {/* Scroll Indicator Section - Only show when 2+ frequent spots and content overflows */}
+        {!isLoadingFrequentSpots && frequentSpots.length >= 2 && canScrollFrequentSpots && (
           <View style={homeScreenStyles.progressSection}>
             <View style={homeScreenStyles.progressContainer}>
               <View style={homeScreenStyles.progressTrack}>

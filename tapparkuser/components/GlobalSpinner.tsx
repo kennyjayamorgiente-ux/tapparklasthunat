@@ -370,18 +370,18 @@ const GlobalSpinner: React.FC = () => {
       // Smooth fade in
       Animated.parallel([
         Animated.timing(fadeAnim, {
-          toValue: 1,
+            toValue: 1,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
+            useNativeDriver: true,
+          }),
         Animated.timing(messageOpacity, {
           toValue: 1,
           duration: 400,
           delay: 100,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
+            useNativeDriver: true,
+          }),
       ]).start();
     } else {
       // Reset when not loading

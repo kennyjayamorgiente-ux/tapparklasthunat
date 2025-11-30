@@ -7,18 +7,23 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal
+  Modal,
+  Dimensions,
+  ScrollView
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import SharedHeader from '../../components/SharedHeader';
 import InteractiveParkingLayout from '../../components/InteractiveParkingLayout';
 import { getActiveParkingScreenStyles } from '../styles/activeParkingScreenStyles';
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import ApiService from '../../services/api';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const ActiveParkingScreen: React.FC = () => {
   const router = useRouter();
@@ -35,6 +40,10 @@ const ActiveParkingScreen: React.FC = () => {
   // SVG Layout state
   const [svgContent, setSvgContent] = useState<string>('');
   const [isLoadingSvg, setIsLoadingSvg] = useState(false);
+  
+  // Zoom state for SVG - using regular state for simplicity
+  const [scale, setScale] = React.useState(1);
+  const savedScaleRef = React.useRef(1);
   
   // Display state
   const [qrScanned, setQrScanned] = useState(false);
@@ -79,12 +88,17 @@ const ActiveParkingScreen: React.FC = () => {
 
 
   // Function to load SVG content using AJAX
-  const loadSvgContent = async () => {
+  const loadSvgContent = async (forceRefresh = false) => {
     if (!bookingData?.parkingArea?.id) return;
+    
+    // Clear existing content if forcing refresh
+    if (forceRefresh) {
+      setSvgContent('');
+    }
     
     setIsLoadingSvg(true);
     try {
-      console.log('🖼️ Loading parking layout for area:', bookingData.parkingArea.id);
+      console.log('🖼️ Loading parking layout for area:', bookingData.parkingArea.id, forceRefresh ? '(FORCE REFRESH)' : '');
       
       // Get the layout info with SVG content directly
       const layoutInfo = await ApiService.getParkingAreaLayout(bookingData.parkingArea.id);
@@ -92,9 +106,16 @@ const ActiveParkingScreen: React.FC = () => {
       
       if (layoutInfo.success && layoutInfo.data.hasLayout && layoutInfo.data.layoutSvg) {
         console.log('✅ Layout found with SVG content, length:', layoutInfo.data.layoutSvg.length);
+        console.log('📄 SVG preview (first 200 chars):', layoutInfo.data.layoutSvg.substring(0, 200));
         setSvgContent(layoutInfo.data.layoutSvg);
       } else {
         console.log('❌ No layout available for this area');
+        console.log('📊 Response data:', {
+          success: layoutInfo.success,
+          hasLayout: layoutInfo.data?.hasLayout,
+          hasSvg: !!layoutInfo.data?.layoutSvg,
+          layoutSvgLength: layoutInfo.data?.layoutSvg?.length || 0
+        });
         setSvgContent('');
       }
     } catch (error) {
@@ -105,10 +126,10 @@ const ActiveParkingScreen: React.FC = () => {
     }
   };
 
-  // Load SVG when layout tab is activated
+  // Load SVG when layout tab is activated - always fetch fresh data
   useEffect(() => {
-    if (activeTab === 'layout' && bookingData && !svgContent) {
-      loadSvgContent();
+    if (activeTab === 'layout' && bookingData) {
+      loadSvgContent(true); // Force refresh when tab is activated
     }
   }, [activeTab, bookingData]);
 
@@ -566,7 +587,11 @@ const ActiveParkingScreen: React.FC = () => {
 
       <View style={activeParkingScreenStyles.content}>
         {/* Section Title */}
-        <Text style={activeParkingScreenStyles.sectionTitle}>Parking Ticket</Text>
+        <Text style={activeParkingScreenStyles.sectionTitle}>
+          {activeTab === 'ticket' ? 'Parking Ticket' : 
+           activeTab === 'layout' ? 'Parking Layout' : 
+           'Parking Time'}
+        </Text>
 
         {/* Navigation Tabs */}
         <View style={activeParkingScreenStyles.tabsContainer}>
@@ -737,17 +762,65 @@ const ActiveParkingScreen: React.FC = () => {
                   </Text>
                   <TouchableOpacity
                     style={activeParkingScreenStyles.refreshButton}
-                    onPress={loadSvgContent}
+                    onPress={() => loadSvgContent(true)}
                   >
                     <Ionicons name="refresh" size={16} color="#FFFFFF" />
                     <Text style={activeParkingScreenStyles.refreshButtonText}> Refresh</Text>
                   </TouchableOpacity>
                 </View>
-                <SvgXml
-                  xml={svgContent}
-                  width="100%"
-                  height={600}
-                />
+                <View style={{ 
+                  width: '100%',
+                  height: Math.min(400, screenHeight * 0.5),
+                  overflow: 'hidden',
+                }}>
+                  <PinchGestureHandler
+                    onGestureEvent={(event) => {
+                      const newScale = savedScaleRef.current * event.nativeEvent.scale;
+                      // Limit zoom between 0.5x and 5x
+                      const clampedScale = Math.max(0.5, Math.min(5, newScale));
+                      setScale(clampedScale);
+                    }}
+                    onHandlerStateChange={(event) => {
+                      if (event.nativeEvent.oldState === State.ACTIVE) {
+                        savedScaleRef.current = scale;
+                      }
+                    }}
+                  >
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={true}
+                      style={{ 
+                        width: '100%',
+                        height: '100%',
+                      }}
+                      contentContainerStyle={{ 
+                        minWidth: (screenWidth - 80) * scale,
+                      }}
+                    >
+                      <ScrollView
+                        showsVerticalScrollIndicator={true}
+                        contentContainerStyle={{
+                          minHeight: ((screenWidth - 80) * (322 / 276)) * scale,
+                        }}
+                      >
+                        <View style={{
+                          transform: [{ scale }],
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: screenWidth - 80,
+                          height: (screenWidth - 80) * (322 / 276),
+                        }}>
+                          <SvgXml
+                            xml={svgContent}
+                            width={screenWidth - 80}
+                            height={(screenWidth - 80) * (322 / 276)}
+                            preserveAspectRatio="xMidYMid meet"
+                          />
+                        </View>
+                      </ScrollView>
+                    </ScrollView>
+                  </PinchGestureHandler>
+                </View>
               </View>
             ) : (
               <View style={activeParkingScreenStyles.emptyStateContainer}>
@@ -760,7 +833,7 @@ const ActiveParkingScreen: React.FC = () => {
                 </Text>
                 <TouchableOpacity
                   style={activeParkingScreenStyles.refreshButton}
-                  onPress={loadSvgContent}
+                  onPress={() => loadSvgContent(true)}
                 >
                   <Ionicons name="refresh" size={16} color="#FFFFFF" />
                   <Text style={activeParkingScreenStyles.refreshButtonText}> Try Again</Text>

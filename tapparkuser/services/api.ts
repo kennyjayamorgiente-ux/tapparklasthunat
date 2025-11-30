@@ -1227,6 +1227,8 @@ export class ApiService {
 
   // Parking Layout API Methods
   static async getParkingAreaLayout(areaId: number) {
+    // Add cache-busting timestamp to ensure fresh data
+    const timestamp = Date.now();
     return this.request<{
       success: boolean;
       data: {
@@ -1237,7 +1239,7 @@ export class ApiService {
         layoutSvg: string;
         hasLayout: boolean;
       };
-    }>(`/parking-areas/area/${areaId}/layout`);
+    }>(`/parking-areas/area/${areaId}/layout?t=${timestamp}`);
   }
 
   static async getParkingLayouts() {

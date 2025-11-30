@@ -97,8 +97,8 @@ export const AppTheme = {
     textInverse: '#1a1a1a',          // Inverse Text
     
     // UI element colors
-    header: '#4a1a1a',               // Nav Background (Dark maroon)
-    headerText: '#e8d4d4',           // Main Text
+    header: '#8A0000',               // Nav Background (Same as light mode)
+    headerText: '#FFFFFF',           // Header Text (Same as light mode)
     divider: 'rgba(128, 0, 0, 0.2)', // Divider
     border: 'rgba(128, 0, 0, 0.25)', // Border (25% maroon)
     
