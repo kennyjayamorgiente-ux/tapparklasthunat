@@ -21,6 +21,7 @@ import SharedHeader from '../../components/SharedHeader';
 import InteractiveParkingLayout from '../../components/InteractiveParkingLayout';
 import { getActiveParkingScreenStyles } from '../styles/activeParkingScreenStyles';
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import ApiService from '../../services/api';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -30,6 +31,7 @@ const ActiveParkingScreen: React.FC = () => {
   const params = useLocalSearchParams();
   const colors = useThemeColors();
   const { isDarkMode } = useTheme();
+  const { isAuthenticated } = useAuth();
   const activeParkingScreenStyles = getActiveParkingScreenStyles(colors);
   const [activeTab, setActiveTab] = useState('ticket');
   
@@ -305,11 +307,27 @@ const ActiveParkingScreen: React.FC = () => {
 
   // Real-time polling to sync with attendant actions
   useEffect(() => {
+    // Don't poll if user is not authenticated
+    if (!isAuthenticated) {
+      console.log('🔐 User not authenticated - skipping reservation polling');
+      return;
+    }
+
     if (!bookingData?.reservationId) return;
 
     let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
     const pollReservationStatus = async () => {
+      // Double-check authentication before each poll
+      if (!isAuthenticated) {
+        console.log('🔐 User logged out during polling - stopping');
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+        return;
+      }
+
       try {
         console.log('🔄 Polling reservation status for real-time sync...');
         const response = await ApiService.getBookingDetails(bookingData.reservationId);
@@ -390,8 +408,13 @@ const ActiveParkingScreen: React.FC = () => {
           }
         }
       } catch (error) {
-        // Don't log authentication errors as errors - they're expected when not logged in
-        if (error instanceof Error && error.message.includes('Access token required')) {
+        // Handle authentication errors gracefully - user logged out
+        if (error instanceof Error && (
+          error.message.includes('Authentication error') ||
+          error.message.includes('Please login again') ||
+          error.message.includes('Access token required') ||
+          error.message.includes('401')
+        )) {
           console.log('🔐 User logged out - stopping reservation polling');
           // Clear booking data and stop polling when user is logged out
           setBookingData(null);
@@ -403,6 +426,8 @@ const ActiveParkingScreen: React.FC = () => {
             clearInterval(pollingInterval);
             pollingInterval = null;
           }
+          // Navigate back to home/login screen
+          router.replace('/screens/HomeScreen');
         } else {
           console.error('❌ Error polling reservation status:', error);
         }
@@ -419,7 +444,7 @@ const ActiveParkingScreen: React.FC = () => {
         clearInterval(pollingInterval);
       }
     };
-  }, [bookingData?.reservationId, isTimerRunning]);
+  }, [bookingData?.reservationId, isTimerRunning, isAuthenticated]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
