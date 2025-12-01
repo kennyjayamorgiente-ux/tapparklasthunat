@@ -161,23 +161,73 @@ const HistoryScreen: React.FC = () => {
 
   const handleAddToFavorites = async (historyId: string) => {
     try {
-      // Find the history item to get parking spot ID
+      // Find the history item to get reservation ID
       const historyItem = historyData.find(item => item.reservation_id === historyId);
-      if (historyItem) {
-        const response = await ApiService.addFavorite(historyItem.parking_spots_id);
-        if (response.success) {
-          if ((response as any).alreadyExists) {
-            Alert.alert('Already in Favorites!', 'This parking spot is already in your favorites.');
-          } else {
-            Alert.alert('Success!', 'Parking spot added to favorites.');
-          }
+      if (!historyItem) {
+        Alert.alert('Error', 'Could not find booking details');
+        return;
+      }
+      
+      // Get parking spot ID from reservation (history data doesn't include parking_spots_id)
+      let parkingSpotId: number | null = null;
+      
+      try {
+        const spotIdResponse = await ApiService.getParkingSpotIdFromReservation(Number(historyId));
+        if (spotIdResponse.success && spotIdResponse.data.parkingSpotId) {
+          parkingSpotId = spotIdResponse.data.parkingSpotId;
+          console.log('Got parking spot ID from reservation:', parkingSpotId);
         } else {
-          Alert.alert('Error', 'Failed to add to favorites');
+          throw new Error('Failed to get parking spot ID from reservation');
         }
+      } catch (spotIdError) {
+        console.error('Error getting parking spot ID from reservation:', spotIdError);
+        Alert.alert(
+          'Error',
+          'Unable to retrieve parking spot information. Please try again later.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Validate parking spot ID
+      if (!parkingSpotId || isNaN(Number(parkingSpotId))) {
+        Alert.alert(
+          'Error',
+          'Invalid parking spot information. Please contact support.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      const response = await ApiService.addFavorite(Number(parkingSpotId));
+      if (response.success) {
+        if ((response as any).alreadyExists) {
+          Alert.alert('Already in Favorites!', 'This parking spot is already in your favorites.');
+        } else {
+          Alert.alert('Success!', 'Parking spot added to favorites.');
+        }
+      } else {
+        Alert.alert('Error', response.message || 'Failed to add to favorites');
       }
     } catch (error) {
       console.error('Error adding to favorites:', error);
-      Alert.alert('Error', 'Failed to add to favorites');
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('Parking spot not found')) {
+          Alert.alert(
+            'Error',
+            'This parking spot is no longer available. It may have been removed from the system.',
+            [{ text: 'OK' }]
+          );
+        } else if (error.message.includes('already in favorites')) {
+          Alert.alert('Already in Favorites!', 'This parking spot is already in your favorites.');
+        } else {
+          Alert.alert('Error', error.message || 'Failed to add to favorites. Please try again.');
+        }
+      } else {
+        Alert.alert('Error', 'Failed to add to favorites. Please try again.');
+      }
     }
   };
 

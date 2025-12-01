@@ -837,6 +837,7 @@ export class ApiService {
           location: string;
         };
         parkingSlot: {
+          parkingSpotId: number;
           spotNumber: string;
           spotType: string;
           sectionName: string;

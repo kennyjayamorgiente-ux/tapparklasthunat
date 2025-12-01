@@ -65,6 +65,7 @@ const TermsAndConditionsScreen: React.FC = () => {
   const router = useRouter();
   const colors = useThemeColors();
   const { isDarkMode } = useTheme();
+  const { showLoading, hideLoading } = useLoading();
   const styles = getStyles(colors);
 
   return (

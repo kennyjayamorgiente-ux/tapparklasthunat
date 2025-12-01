@@ -160,7 +160,7 @@ export default function SignupScreen() {
               onPress: async () => {
                 // Check if user has any vehicles
                 try {
-                  const vehiclesResponse = await ApiService.ajaxGetVehicles();
+                  const vehiclesResponse = await ApiService.getVehicles();
                   if (vehiclesResponse.success && vehiclesResponse.data.vehicles.length === 0) {
                     // No vehicles found, show AboutScreen to encourage adding a vehicle
                     router.push('/screens/AboutScreen');

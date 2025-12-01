@@ -343,7 +343,7 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
   timerText: {
     fontSize: getResponsiveFontSize(36),
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.textSecondary,
     marginBottom: getResponsiveMargin(8),
   },
   timerLabels: {
@@ -353,7 +353,7 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
   },
   timerLabel: {
     fontSize: getResponsiveFontSize(16),
-    color: '#FFFFFF',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   parkingDetailsCard: {
