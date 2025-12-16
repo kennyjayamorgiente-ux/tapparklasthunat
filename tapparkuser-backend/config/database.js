@@ -9,7 +9,7 @@ class Database {
       port: process.env.DB_PORT || 3306,
       user: process.env.DB_USER || 'root',
       password: '',
-      database: process.env.DB_NAME || 'merge', // Use environment variable for database name
+      database: process.env.DB_NAME || 'finaltappark', // Use environment variable for database name
       waitForConnections: true,
       connectionLimit: 5,
       queueLimit: 0,

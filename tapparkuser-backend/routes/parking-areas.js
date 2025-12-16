@@ -2,6 +2,7 @@ const express = require('express');
 const QRCode = require('qrcode');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { logUserActivity, ActionTypes } = require('../utils/userLogger');
@@ -70,17 +71,30 @@ router.get('/areas/:areaId/spots', async (req, res) => {
 
     // Filter by vehicle type if provided
     if (vehicleType) {
-      // Map vehicle types to spot types for compatibility
-      let spotType = vehicleType;
-      if (vehicleType === 'bicycle') {
+      // Map vehicle types to spot types for compatibility (case-insensitive)
+      let normalizedVehicleType = vehicleType.toLowerCase().trim();
+      let spotType;
+      
+      // Map bicycle variants to bike
+      if (normalizedVehicleType === 'bicycle' || normalizedVehicleType === 'bike' || normalizedVehicleType === 'ebike') {
         spotType = 'bike';
-      } else if (vehicleType === 'ebike') {
-        spotType = 'bike';
+      }
+      // Map car variants (should already be 'car')
+      else if (normalizedVehicleType === 'car' || normalizedVehicleType === 'automobile' || normalizedVehicleType === 'auto') {
+        spotType = 'car';
+      }
+      // Map motorcycle variants
+      else if (normalizedVehicleType === 'motorcycle' || normalizedVehicleType === 'motor' || normalizedVehicleType === 'moto') {
+        spotType = 'motorcycle';
+      }
+      // Default: use the normalized vehicle type as-is
+      else {
+        spotType = normalizedVehicleType;
       }
       
       console.log(`🔍 Filtering spots for vehicle type: ${vehicleType} -> spot type: ${spotType}`);
-      query += ` AND ps.spot_type = ?`;
-      params.push(spotType);
+      query += ` AND LOWER(TRIM(ps.spot_type)) = ?`;
+      params.push(spotType.toLowerCase());
     }
 
     query += ` ORDER BY ps.spot_number`;
@@ -303,30 +317,57 @@ router.post('/book', authenticateToken, async (req, res) => {
         });
       }
 
+      // Generate unique QR key before creating reservation
+      const qrKey = uuidv4();
+      
       // Create reservation within the same transaction
-      const [insertResult] = await connection.execute(`
-        INSERT INTO reservations (
-          user_id, vehicle_id, parking_spots_id, time_stamp, start_time, 
-          booking_status, QR
-        ) VALUES (?, ?, ?, NOW(), NULL, 'reserved', '')
-      `, [req.user.user_id, vehicleId, spotId]);
+      // Try to insert with qr_key, fallback if column doesn't exist
+      let insertResult;
+      try {
+        [insertResult] = await connection.execute(`
+          INSERT INTO reservations (
+            user_id, vehicle_id, parking_spots_id, time_stamp, start_time, 
+            booking_status, QR, qr_key
+          ) VALUES (?, ?, ?, NOW(), NULL, 'reserved', '', ?)
+        `, [req.user.user_id, vehicleId, spotId, qrKey]);
+      } catch (insertError) {
+        // If qr_key column doesn't exist, add it and retry
+        if (insertError.message && insertError.message.includes('Unknown column')) {
+          console.log('⚠️  qr_key column not found, adding it now...');
+          try {
+            await connection.execute(`
+              ALTER TABLE reservations 
+              ADD COLUMN qr_key VARCHAR(255) UNIQUE NULL AFTER QR
+            `);
+            console.log('✅ Added qr_key column to reservations table');
+          } catch (alterError) {
+            // Column might have been added by another request, try insert again
+            if (!alterError.message.includes('Duplicate column name')) {
+              throw alterError;
+            }
+          }
+          // Retry insert with qr_key
+          [insertResult] = await connection.execute(`
+            INSERT INTO reservations (
+              user_id, vehicle_id, parking_spots_id, time_stamp, start_time, 
+              booking_status, QR, qr_key
+            ) VALUES (?, ?, ?, NOW(), NULL, 'reserved', '', ?)
+          `, [req.user.user_id, vehicleId, spotId, qrKey]);
+        } else {
+          throw insertError;
+        }
+      }
 
       const reservationId = insertResult.insertId;
       
-      // Generate QR code data with reservation information
+      // Generate QR code data with only qr_key
+      // IMPORTANT: Only qr_key is included in the QR code for validation
       const qrData = {
-        reservationId: reservationId,
-        userId: req.user.user_id,
-        vehicleId: vehicleId,
-        spotId: spotId,
-        areaId: areaId,
-        plateNumber: vehicleDetails[0].plate_number,
-        parkingArea: areaDetails[0].parking_area_name,
-        spotNumber: spot.spot_number,
-        timestamp: Date.now()
+        qr_key: qrKey
       };
       
       // Generate QR code as data URL
+      // The QR code contains only: qr_key and reservation_id
       const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
         width: 256,
         margin: 2,
@@ -336,7 +377,7 @@ router.post('/book', authenticateToken, async (req, res) => {
         }
       });
       
-      // Update the reservation with the QR code within transaction
+      // Update the reservation with the QR code (qr_key already set in INSERT)
       await connection.execute(
         'UPDATE reservations SET QR = ? WHERE reservation_id = ?',
         [qrCodeDataURL, reservationId]
@@ -359,10 +400,12 @@ router.post('/book', authenticateToken, async (req, res) => {
         data: {
           reservationId,
           qrCode: qrCodeDataURL,
+          qrKey: qrKey,
           message: 'Parking spot booked successfully',
           bookingDetails: {
             reservationId,
             qrCode: qrCodeDataURL,
+            qrKey: qrKey,
             vehiclePlate: vehicleDetails[0].plate_number,
             vehicleType: vehicleDetails[0].vehicle_type,
             vehicleBrand: vehicleDetails[0].brand,
@@ -639,6 +682,7 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         r.end_time,
         r.booking_status,
         r.QR,
+        r.qr_key,
         u.first_name,
         u.last_name,
         u.email,
@@ -661,6 +705,8 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
       JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
       WHERE r.reservation_id = ? AND r.user_id = ?
     `, [reservationId, req.user.user_id]);
+    
+    console.log('🔍 SQL Query result - bookingDetails[0]:', bookingDetails[0]);
 
     if (bookingDetails.length === 0) {
       return res.status(404).json({
@@ -670,6 +716,38 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
     }
 
     const booking = bookingDetails[0];
+    
+    console.log('🔍 Raw booking.qr_key from database:', booking.qr_key);
+    console.log('🔍 Type of booking.qr_key:', typeof booking.qr_key);
+    
+    // Ensure qr_key is a clean UUID string, not JSON
+    let qrKey = booking.qr_key;
+    if (qrKey) {
+      // Convert to string and trim
+      qrKey = String(qrKey).trim();
+      
+      // If qr_key appears to be JSON, try to extract the actual UUID
+      // This handles cases where old data might have JSON stored in qr_key
+      if (qrKey.startsWith('{') || qrKey.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(qrKey);
+          // If it parsed to an object, it's not a valid UUID
+          if (typeof parsed === 'object') {
+            console.warn('⚠️  qr_key contains JSON instead of UUID:', parsed);
+            qrKey = null;
+          }
+        } catch (e) {
+          // Parse failed but starts with {, still not valid
+          console.warn('⚠️  qr_key starts with { but is not valid JSON');
+          qrKey = null;
+        }
+      } else {
+        // Not JSON, use as is (should be UUID)
+        console.log('✅ qr_key appears to be valid (not JSON):', qrKey);
+      }
+    } else {
+      console.warn('⚠️  qr_key is null or undefined in database for reservation:', reservationId);
+    }
 
     // Check for penalty if reservation is completed
     let penaltyInfo = null;
@@ -722,9 +800,12 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         },
         bookingStatus: booking.booking_status,
         qrCode: booking.QR,
+        qrKey: qrKey || null,
         penaltyInfo: penaltyInfo
       }
     });
+    
+    console.log('📱 Booking details response - qrKey:', qrKey);
 
   } catch (error) {
     console.error('Get booking details error:', error);

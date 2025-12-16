@@ -172,11 +172,20 @@ export const getActiveParkingScreenStyles = (colors: ThemeColors) => StyleSheet.
     width: '100%',
     maxHeight: isSmallScreen ? screenWidth * 1.2 : isTablet ? screenWidth * 1.1 : screenWidth * 1.15,
   },
+  ticketContentContainer: {
+    padding: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(30),
+    minHeight: isSmallScreen ? getResponsiveSize(550) : isTablet ? getResponsiveSize(700) : getResponsiveSize(650),
+  },
+  ticketContentContainer: {
+    padding: getResponsivePadding(20),
+    paddingBottom: getResponsivePadding(30),
+    minHeight: isSmallScreen ? getResponsiveSize(550) : isTablet ? getResponsiveSize(700) : getResponsiveSize(650),
+  },
   qrSection: {
     alignItems: 'center',
-    marginBottom: isSmallScreen ? getResponsivePadding(20) : isTablet ? getResponsivePadding(50) : getResponsivePadding(30),
-    marginTop: isSmallScreen ? getResponsivePadding(10) : isTablet ? getResponsivePadding(30) : getResponsivePadding(20),
-    flexShrink: 0,
+    marginBottom: isSmallScreen ? getResponsivePadding(40) : isTablet ? getResponsivePadding(100) : getResponsivePadding(80),
+    marginTop: isSmallScreen ? getResponsivePadding(20) : isTablet ? getResponsivePadding(50) : getResponsivePadding(40),
     justifyContent: 'center',
   },
   qrContainer: {

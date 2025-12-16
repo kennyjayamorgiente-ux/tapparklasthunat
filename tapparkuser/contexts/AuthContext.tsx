@@ -20,7 +20,7 @@ interface AuthContextType {
   checkAuthStatus: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -38,17 +38,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Check if user is already logged in on app start
-  useEffect(() => {
-    const initializeAuth = async () => {
-      // Initialize token from AsyncStorage first
-      await ApiService.initializeToken();
-      // Then check auth status
-      await checkAuthStatus();
-    };
-    initializeAuth();
-  }, []);
 
   const checkAuthStatus = async () => {
     try {
@@ -82,23 +71,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Check if user is already logged in on app start
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // Initialize token from AsyncStorage first
+      await ApiService.initializeToken();
+      // Then check auth status
+      await checkAuthStatus();
+    };
+    initializeAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const login = async (email: string, password: string): Promise<{ success: boolean; user?: User }> => {
     try {
       setIsLoading(true);
       // Use AJAX login method
       const response = await ApiService.login(email, password);
       
-      if (response.success && response.data?.user) {
-        // Store token after successful AJAX login
-        if (response.data.token) {
-          await ApiService.storeToken(response.data.token);
-        }
-        
+      if (response.success && response.data && response.data.user) {
+        // Token is automatically stored by ApiService.login()
         setUser(response.data.user);
         setIsAuthenticated(true);
         return { success: true, user: response.data.user };
       }
-      return { success: false, message: response.message };
+      return { success: false };
     } catch (error) {
       // Don't log login errors to console to avoid terminal spam
       return { success: false };
