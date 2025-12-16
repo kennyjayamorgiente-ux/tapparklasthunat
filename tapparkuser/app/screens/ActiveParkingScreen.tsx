@@ -69,6 +69,14 @@ const getResponsiveMargin = (baseMargin: number): number => {
   return baseMargin;
 };
 
+// Helper function to format decimal hours to HH.MM format (e.g., 83.5 -> "83.30")
+const formatHoursToHHMM = (decimalHours: number): string => {
+  if (!decimalHours || decimalHours === 0) return '0.00';
+  const hours = Math.floor(decimalHours);
+  const minutes = Math.round((decimalHours - hours) * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+};
+
 const ActiveParkingScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -1018,7 +1026,8 @@ const ActiveParkingScreen: React.FC = () => {
                 const startTime = new Date(details.timestamps.startTime);
                 const endTime = new Date();
                 const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-                const durationHours = Math.ceil(durationMinutes / 60);
+                // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
+                const durationHours = durationMinutes / 60;
                 
                 // Wait a moment for backend to process the deduction, then get updated balance
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -1030,7 +1039,7 @@ const ActiveParkingScreen: React.FC = () => {
                 setParkingEndDetails({
                   durationMinutes,
                   durationHours,
-                  chargeHours: durationHours,
+                  chargeHours: durationHours, // Use decimal hours to match backend deduction
                   balanceHours: balanceHours, // This is the balance AFTER deduction from backend
                   startTime: details.timestamps.startTime,
                   endTime: endTime.toISOString(),
@@ -1045,12 +1054,13 @@ const ActiveParkingScreen: React.FC = () => {
               const startTime = bookingData.timestamps?.startTime ? new Date(bookingData.timestamps.startTime) : new Date();
               const endTime = new Date();
               const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-              const durationHours = Math.ceil(durationMinutes / 60);
+              // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
+              const durationHours = durationMinutes / 60;
               
               setParkingEndDetails({
                 durationMinutes,
                 durationHours,
-                chargeHours: durationHours,
+                chargeHours: durationHours, // Use decimal hours to match backend deduction
                 balanceHours: 0,
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
@@ -2203,16 +2213,16 @@ const ActiveParkingScreen: React.FC = () => {
                   </View>
                   
                   <View style={activeParkingScreenStyles.parkingEndDetailRow}>
-                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Charge Amount:</Text>
+                    <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Hours Deducted:</Text>
                     <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
-                      {parkingEndDetails.chargeHours} {parkingEndDetails.chargeHours === 1 ? 'hour' : 'hours'}
+                      {formatHoursToHHMM(parkingEndDetails.chargeHours)} hr{parkingEndDetails.chargeHours >= 1 ? 's' : ''}
                     </Text>
                   </View>
                   
                   <View style={activeParkingScreenStyles.parkingEndDetailRow}>
                     <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Remaining Balance:</Text>
                     <Text style={activeParkingScreenStyles.parkingEndDetailValue}>
-                      {parkingEndDetails.balanceHours} {parkingEndDetails.balanceHours === 1 ? 'hour' : 'hours'}
+                      {formatHoursToHHMM(parkingEndDetails.balanceHours)} hr{parkingEndDetails.balanceHours >= 1 ? 's' : ''}
                     </Text>
                   </View>
                   

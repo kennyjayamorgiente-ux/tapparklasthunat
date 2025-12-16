@@ -4,6 +4,16 @@ const db = require('../config/database');
 // Verify JWT token
 const authenticateToken = async (req, res, next) => {
   try {
+    // Check if JWT_SECRET is configured
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET is not configured in environment variables');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error',
+        errorCode: 'JWT_SECRET_MISSING'
+      });
+    }
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -15,15 +25,71 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      if (jwtError.name === 'JsonWebTokenError') {
+        console.error('❌ Invalid JWT token:', jwtError.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token'
+        });
+      }
+      
+      if (jwtError.name === 'TokenExpiredError') {
+        console.error('❌ Token expired');
+        return res.status(401).json({
+          success: false,
+          message: 'Token expired'
+        });
+      }
+      throw jwtError;
+    }
+
+    if (!decoded || !decoded.userId) {
+      console.error('❌ Token decoded but missing userId:', decoded);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token payload'
+      });
+    }
     
     // Check if user still exists and is active
-    const user = await db.query(
-      'SELECT user_id, email, first_name, last_name FROM users WHERE user_id = ?',
-      [decoded.userId]
-    );
+    let user;
+    try {
+      user = await db.query(
+        'SELECT user_id, email, first_name, last_name FROM users WHERE user_id = ?',
+        [decoded.userId]
+      );
+    } catch (dbError) {
+      console.error('❌ Database query error in auth middleware:', dbError);
+      
+      // Check for database connection errors
+      if (
+        dbError.code === 'ECONNREFUSED' ||
+        dbError.code === 'ETIMEDOUT' ||
+        dbError.code === 'ENOTFOUND' ||
+        dbError.message?.includes('connect ECONNREFUSED') ||
+        dbError.message?.includes('connection') ||
+        dbError.message?.includes('Unable to connect') ||
+        dbError.errno === -61 || // Connection refused (Mac/Linux)
+        dbError.errno === 10061 || // Connection refused (Windows)
+        dbError.sqlState === '08001' || // SQL connection error
+        (dbError.sqlState === 'HY000' && dbError.code === 'ECONNREFUSED')
+      ) {
+        return res.status(503).json({
+          success: false,
+          message: 'Database connection error. Please ensure the database server is running.',
+          errorCode: 'DATABASE_CONNECTION_ERROR'
+        });
+      }
+      
+      throw dbError;
+    }
 
-    if (!user.length) {
+    if (!user || !user.length) {
+      console.error('❌ User not found for userId:', decoded.userId);
       return res.status(401).json({
         success: false,
         message: 'User not found'
@@ -36,46 +102,25 @@ const authenticateToken = async (req, res, next) => {
     req.user = user[0];
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token'
-      });
-    }
+    console.error('❌ Auth middleware error:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState
+    });
     
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expired'
-      });
+    // If it's already been handled above, don't send another response
+    if (res.headersSent) {
+      return;
     }
 
-    // Check for database connection errors
-    if (
-      error.code === 'ECONNREFUSED' ||
-      error.code === 'ETIMEDOUT' ||
-      error.code === 'ENOTFOUND' ||
-      error.message?.includes('connect ECONNREFUSED') ||
-      error.message?.includes('connection') ||
-      error.message?.includes('Unable to connect') ||
-      error.errno === -61 || // Connection refused (Mac/Linux)
-      error.errno === 10061 || // Connection refused (Windows)
-      error.sqlState === '08001' || // SQL connection error
-      error.sqlState === 'HY000' && error.code === 'ECONNREFUSED'
-    ) {
-      console.error('Database connection error in auth middleware:', error.message);
-      return res.status(503).json({
-        success: false,
-        message: 'Database connection error. Please ensure the database server is running.',
-        errorCode: 'DATABASE_CONNECTION_ERROR'
-      });
-    }
-
-    console.error('Auth middleware error:', error);
     return res.status(500).json({
       success: false,
       message: 'Authentication error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      errorCode: 'AUTH_ERROR'
     });
   }
 };

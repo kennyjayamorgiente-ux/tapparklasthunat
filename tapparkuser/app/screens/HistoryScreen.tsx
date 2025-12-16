@@ -43,6 +43,18 @@ import { createHistoryScreenStyles } from '../styles/historyScreenStyles';
 
 // Now using dynamic orientation-aware responsive system
 
+// Helper function to format decimal hours to HH.MM format (e.g., 83.5 -> "83.30")
+const formatHoursToHHMM = (decimalHours: number | string | null | undefined): string => {
+  const hours = typeof decimalHours === 'string' ? parseFloat(decimalHours) : (decimalHours || 0);
+  // Ensure minimum of 1 minute (0.0167 hours) is displayed as 0.01
+  if (hours === 0) return '0.01';
+  const wholeHours = Math.floor(hours);
+  const minutes = Math.round((hours - wholeHours) * 60);
+  // If less than 1 minute, ensure it shows as 0.01 (1 minute minimum)
+  if (wholeHours === 0 && minutes === 0) return '0.01';
+  return `${wholeHours}.${minutes.toString().padStart(2, '0')}`;
+};
+
 const HistoryScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
@@ -151,6 +163,22 @@ const HistoryScreen: React.FC = () => {
     const historyItem = historyData.find(item => item.reservation_id === historyId);
     if (historyItem) {
       console.log('🎯 Found history item:', historyItem);
+      
+      // Validate that required fields exist
+      if (!historyItem.parking_spot_id || !historyItem.parking_area_id) {
+        console.error('❌ Missing required fields:', {
+          parking_spot_id: historyItem.parking_spot_id,
+          parking_area_id: historyItem.parking_area_id,
+          historyItem
+        });
+        Alert.alert(
+          'Error',
+          'Missing parking spot information. Please try refreshing the history or contact support.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
       setSelectedSpotForBooking(historyItem);
       setIsVehicleSelectionModalVisible(true);
     } else {
@@ -264,6 +292,26 @@ const HistoryScreen: React.FC = () => {
     try {
       setIsBooking(true);
       
+      // Check spot availability first - don't attempt booking if spot is occupied/reserved
+      const spotStatus = selectedSpotForBooking.spot_status || selectedSpotForBooking.status;
+      
+      // Check if spot status is not available
+      if (spotStatus && spotStatus !== 'available' && spotStatus !== 'AVAILABLE') {
+        setIsBooking(false);
+        const statusMessage = spotStatus === 'occupied' || spotStatus === 'OCCUPIED' 
+          ? 'This parking spot is currently occupied.' 
+          : spotStatus === 'reserved' || spotStatus === 'RESERVED'
+          ? 'This parking spot is currently reserved.'
+          : 'This parking spot is not available for booking.';
+        
+        Alert.alert(
+          'Spot Not Available',
+          statusMessage + ' Please try a different spot.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
+      
       // Check for current booking first
       const currentBookingResponse = await ApiService.getMyBookings();
       console.log('🔍 My bookings response:', JSON.stringify(currentBookingResponse, null, 2));
@@ -274,6 +322,7 @@ const HistoryScreen: React.FC = () => {
         );
         
         if (activeBooking) {
+          setIsBooking(false);
           const statusText = activeBooking.bookingStatus === 'reserved' ? 'reserved' : 'active';
           Alert.alert(
             'Current Booking',
@@ -286,6 +335,7 @@ const HistoryScreen: React.FC = () => {
 
       const vehicle = userVehicles.find(v => v.id.toString() === selectedVehicle);
       if (!vehicle) {
+        setIsBooking(false);
         Alert.alert('Error', 'Selected vehicle not found');
         return;
       }
@@ -312,27 +362,32 @@ const HistoryScreen: React.FC = () => {
             {
               text: 'OK',
               onPress: () => {
-                showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
-                router.push({
-                  pathname: '/screens/ActiveParkingScreen',
-                  params: {
-                    sessionId: response.data.reservationId,
-                    vehicleId: vehicle.id,
-                    vehiclePlate: response.data.bookingDetails.vehiclePlate,
-                    vehicleType: response.data.bookingDetails.vehicleType,
-                    vehicleBrand: response.data.bookingDetails.vehicleBrand,
-                    areaName: response.data.bookingDetails.areaName,
-                    areaLocation: response.data.bookingDetails.areaLocation,
-                    spotNumber: response.data.bookingDetails.spotNumber,
-                    spotType: response.data.bookingDetails.spotType,
-                    startTime: response.data.bookingDetails.startTime,
-                    status: response.data.bookingDetails.status
-                  }
+                // Allow Alert to dismiss first, then navigate smoothly
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
+                    router.push({
+                      pathname: '/screens/ActiveParkingScreen',
+                      params: {
+                        sessionId: response.data.reservationId,
+                        vehicleId: vehicle.id,
+                        vehiclePlate: response.data.bookingDetails.vehiclePlate,
+                        vehicleType: response.data.bookingDetails.vehicleType,
+                        vehicleBrand: response.data.bookingDetails.vehicleBrand,
+                        areaName: response.data.bookingDetails.areaName,
+                        areaLocation: response.data.bookingDetails.areaLocation,
+                        spotNumber: response.data.bookingDetails.spotNumber,
+                        spotType: response.data.bookingDetails.spotType,
+                        startTime: response.data.bookingDetails.startTime,
+                        status: response.data.bookingDetails.status
+                      }
+                    });
+                    setTimeout(() => hideLoading(), 500);
+                    setIsVehicleSelectionModalVisible(false);
+                    setSelectedVehicle('');
+                    setSelectedSpotForBooking(null);
+                  }, 150);
                 });
-                setTimeout(() => hideLoading(), 300);
-                setIsVehicleSelectionModalVisible(false);
-                setSelectedVehicle('');
-                setSelectedSpotForBooking(null);
               }
             }
           ]
@@ -342,20 +397,31 @@ const HistoryScreen: React.FC = () => {
         if ((response.data as any)?.errorCode === 'VEHICLE_TYPE_MISMATCH') {
           setMismatchData((response.data as any).data);
           setShowVehicleMismatchModal(true);
+        } else if ((response.data as any)?.errorCode === 'SPOT_UNAVAILABLE' || 
+                   (response.data as any)?.message?.includes('no longer available') ||
+                   (response.data as any)?.message?.includes('not available')) {
+          Alert.alert(
+            'Spot Not Available',
+            'This parking spot is no longer available. It may have been booked by another user. Please try a different spot.',
+            [{ text: 'OK', style: 'default' }]
+          );
         } else {
           Alert.alert('Error', response.data?.message || 'Failed to book parking spot');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      setIsBooking(false);
       console.error('Error booking parking spot:', error);
       
       // Check if it's a specific error message from the API
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
-      if (errorMessage.includes('no longer available')) {
+      if (errorMessage.includes('no longer available') || 
+          errorMessage.includes('not available') ||
+          errorMessage.includes('SPOT_UNAVAILABLE')) {
         Alert.alert(
-          'Spot Unavailable', 
-          'This parking spot was just booked by another user. Please try selecting a different spot.',
+          'Spot Not Available', 
+          'This parking spot is no longer available. It may have been booked by another user. Please try a different spot.',
           [
             {
               text: 'OK',
@@ -580,11 +646,15 @@ const HistoryScreen: React.FC = () => {
                       <Text style={styles.durationText}>
                         Duration: {formatDuration(spot.start_time, spot.end_time)}
                       </Text>
-                      {spot.hours_deducted && spot.hours_deducted > 0 && (
+                      {spot.hours_deducted !== null && spot.hours_deducted !== undefined ? (
                         <Text style={styles.hoursDeductedText}>
-                          Hours Deducted: {spot.hours_deducted} hr{spot.hours_deducted > 1 ? 's' : ''}
+                          Hours Deducted: {formatHoursToHHMM(spot.hours_deducted)} hr{parseFloat(String(spot.hours_deducted)) >= 1 ? 's' : ''}
                         </Text>
-                      )}
+                      ) : spot.end_time ? (
+                        <Text style={styles.hoursDeductedText}>
+                          Hours Deducted: 0.01 hr
+                        </Text>
+                      ) : null}
                     </View>
                     <Text style={styles.parkingLabel}>Vehicle</Text>
                     <Text style={styles.parkingTime}>
@@ -820,13 +890,17 @@ const HistoryScreen: React.FC = () => {
                     <Text style={styles.reservationDetailSubValue}>
                       Duration: {formatDuration(selectedReservation.start_time, selectedReservation.end_time)}
                     </Text>
-                    {selectedReservation.hours_deducted && selectedReservation.hours_deducted > 0 ? (
+                    {selectedReservation.hours_deducted !== null && selectedReservation.hours_deducted !== undefined ? (
                       <Text style={styles.reservationDetailSubValue}>
-                        Hours Deducted: {selectedReservation.hours_deducted} hr{selectedReservation.hours_deducted > 1 ? 's' : ''}
+                        Hours Deducted: {formatHoursToHHMM(selectedReservation.hours_deducted)} hr{parseFloat(String(selectedReservation.hours_deducted)) >= 1 ? 's' : ''}
+                      </Text>
+                    ) : selectedReservation.end_time ? (
+                      <Text style={styles.reservationDetailSubValue}>
+                        Hours Deducted: 0.01 hr
                       </Text>
                     ) : (
                       <Text style={styles.reservationDetailSubValue}>
-                        Hours Deducted: 1 hr
+                        Hours Deducted: N/A
                       </Text>
                     )}
                   </View>

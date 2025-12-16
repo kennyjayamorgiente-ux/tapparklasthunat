@@ -244,7 +244,8 @@ router.post('/parking/:sessionId', authenticateToken, async (req, res) => {
     const session = sessions[0];
     const endTime = new Date();
     const startTime = new Date(session.start_time);
-    const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
+    // Calculate duration in minutes, ensuring minimum of 1 minute (even for seconds)
+    const durationMinutes = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60)));
     const totalCost = Math.ceil(durationMinutes / 60) * session.hourly_rate;
 
     // Check balance if using wallet

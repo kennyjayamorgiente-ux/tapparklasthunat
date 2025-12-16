@@ -267,6 +267,43 @@ const FavoritesScreen: React.FC = () => {
     try {
       setIsBooking(true);
       
+      // Check spot availability first - don't attempt booking if spot is occupied/reserved
+      const spotStatus = selectedSpotForBooking.spot_status || selectedSpotForBooking.status;
+      const currentReservation = selectedSpotForBooking.current_reservation;
+      
+      // Check if spot is occupied by another user
+      if (currentReservation && currentReservation.user_id !== user?.user_id) {
+        setIsBooking(false);
+        Alert.alert(
+          'Spot Occupied',
+          'This parking spot is currently occupied by another user. Please try a different spot.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
+      
+      // Check if spot status is not available
+      if (spotStatus && spotStatus !== 'available' && spotStatus !== 'AVAILABLE') {
+        // If it's the user's own reservation, allow booking (might be re-booking)
+        if (currentReservation && currentReservation.user_id === user?.user_id) {
+          // Allow booking to proceed - user might be re-booking their own spot
+        } else {
+          setIsBooking(false);
+          const statusMessage = spotStatus === 'occupied' || spotStatus === 'OCCUPIED' 
+            ? 'This parking spot is currently occupied.' 
+            : spotStatus === 'reserved' || spotStatus === 'RESERVED'
+            ? 'This parking spot is currently reserved.'
+            : 'This parking spot is not available for booking.';
+          
+          Alert.alert(
+            'Spot Not Available',
+            statusMessage + ' Please try a different spot.',
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
+        }
+      }
+      
       // Check for current booking first
       const currentBookingResponse = await ApiService.getMyBookings();
       console.log('🔍 My bookings response:', JSON.stringify(currentBookingResponse, null, 2));
@@ -276,6 +313,7 @@ const FavoritesScreen: React.FC = () => {
           (booking: any) => booking.bookingStatus === 'active' || booking.bookingStatus === 'reserved'
         );
         if (activeBooking) {
+          setIsBooking(false);
           const statusText = activeBooking.bookingStatus === 'reserved' ? 'reserved' : 'active';
           Alert.alert(
             'Current Booking',
@@ -289,6 +327,7 @@ const FavoritesScreen: React.FC = () => {
       // Get the selected vehicle
       const vehicle = userVehicles.find(v => v.id.toString() === selectedVehicle);
       if (!vehicle) {
+        setIsBooking(false);
         Alert.alert('Error', 'Selected vehicle not found');
         return;
       }
@@ -315,47 +354,71 @@ const FavoritesScreen: React.FC = () => {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate to ActiveParkingScreen with complete booking details
-                showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
-                router.push({
-                  pathname: '/screens/ActiveParkingScreen',
-                  params: {
-                    sessionId: response.data.reservationId,
-                    vehicleId: vehicle.id,
-                    vehiclePlate: response.data.bookingDetails.vehiclePlate,
-                    vehicleType: response.data.bookingDetails.vehicleType,
-                    vehicleBrand: response.data.bookingDetails.vehicleBrand,
-                    areaName: response.data.bookingDetails.areaName,
-                    areaLocation: response.data.bookingDetails.areaLocation,
-                    spotNumber: response.data.bookingDetails.spotNumber,
-                    spotType: response.data.bookingDetails.spotType,
-                    startTime: response.data.bookingDetails.startTime,
-                    status: response.data.bookingDetails.status
-                  }
+                // Allow Alert to dismiss first, then navigate smoothly
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
+                    router.push({
+                      pathname: '/screens/ActiveParkingScreen',
+                      params: {
+                        sessionId: response.data.reservationId,
+                        vehicleId: vehicle.id,
+                        vehiclePlate: response.data.bookingDetails.vehiclePlate,
+                        vehicleType: response.data.bookingDetails.vehicleType,
+                        vehicleBrand: response.data.bookingDetails.vehicleBrand,
+                        areaName: response.data.bookingDetails.areaName,
+                        areaLocation: response.data.bookingDetails.areaLocation,
+                        spotNumber: response.data.bookingDetails.spotNumber,
+                        spotType: response.data.bookingDetails.spotType,
+                        startTime: response.data.bookingDetails.startTime,
+                        status: response.data.bookingDetails.status
+                      }
+                    });
+                    setTimeout(() => hideLoading(), 500);
+                    // Reset states
+                    setIsVehicleSelectionModalVisible(false);
+                    setSelectedVehicle('');
+                    setSelectedSpotForBooking(null);
+                  }, 150);
                 });
-                setTimeout(() => hideLoading(), 300);
-                // Reset states
-                setIsVehicleSelectionModalVisible(false);
-                setSelectedVehicle('');
-                setSelectedSpotForBooking(null);
               }
             }
           ]
         );
       } else {
+        setIsBooking(false);
         // Check if it's a vehicle type mismatch
         if ((response.data as any)?.errorCode === 'VEHICLE_TYPE_MISMATCH') {
           setMismatchData((response.data as any).data);
           setShowVehicleMismatchModal(true);
+        } else if ((response.data as any)?.errorCode === 'SPOT_UNAVAILABLE' || 
+                   (response.data as any)?.message?.includes('no longer available') ||
+                   (response.data as any)?.message?.includes('not available')) {
+          Alert.alert(
+            'Spot Not Available',
+            'This parking spot is no longer available. It may have been booked by another user. Please try a different spot.',
+            [{ text: 'OK', style: 'default' }]
+          );
         } else {
           Alert.alert('Error', response.data?.message || 'Failed to book parking spot');
         }
       }
-    } catch (error) {
-      console.error('Error booking parking spot:', error);
-      Alert.alert('Error', 'Failed to book parking spot');
-    } finally {
+    } catch (error: any) {
       setIsBooking(false);
+      console.error('Error booking parking spot:', error);
+      
+      // Check if error is about spot not being available
+      if (error?.message?.includes('no longer available') || 
+          error?.message?.includes('not available') ||
+          error?.message?.includes('SPOT_UNAVAILABLE')) {
+        Alert.alert(
+          'Spot Not Available',
+          'This parking spot is no longer available. It may have been booked by another user. Please try a different spot.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to book parking spot. Please try again.');
+      }
     }
   };
 

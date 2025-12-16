@@ -548,8 +548,10 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
     // Calculate duration
     const startTime = new Date(reservationData.start_time);
     const endTime = new Date();
-    const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
-    const durationHours = Math.ceil(durationMinutes / 60);
+    // Calculate duration in minutes, ensuring minimum of 1 minute (even for seconds)
+    const durationMinutes = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60)));
+    // Convert to decimal hours (e.g., 1 minute = 0.0167 hours, 30 minutes = 0.50 hours)
+    const durationHours = durationMinutes / 60;
 
     // Get user's subscription hours balance
     const subscriptionHours = await db.query(`
@@ -729,11 +731,11 @@ router.get('/parking-session-status/:reservationId', authenticateToken, async (r
     if (reservationData.booking_status === 'active' && reservationData.start_time) {
       const startTime = new Date(reservationData.start_time);
       const currentTime = new Date();
-      durationMinutes = Math.ceil((currentTime - startTime) / (1000 * 60));
+      durationMinutes = Math.max(1, Math.ceil((currentTime - startTime) / (1000 * 60)));
     } else if (reservationData.booking_status === 'completed' && reservationData.start_time && reservationData.end_time) {
       const startTime = new Date(reservationData.start_time);
       const endTime = new Date(reservationData.end_time);
-      durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
+      durationMinutes = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60)));
     }
 
     res.json({
@@ -813,11 +815,11 @@ router.get('/parking-session-status-qr/:qrCode', authenticateToken, async (req, 
     if (reservationData.booking_status === 'active' && reservationData.start_time) {
       const startTime = new Date(reservationData.start_time);
       const currentTime = new Date();
-      durationMinutes = Math.ceil((currentTime - startTime) / (1000 * 60));
+      durationMinutes = Math.max(1, Math.ceil((currentTime - startTime) / (1000 * 60)));
     } else if (reservationData.booking_status === 'completed' && reservationData.start_time && reservationData.end_time) {
       const startTime = new Date(reservationData.start_time);
       const endTime = new Date(reservationData.end_time);
-      durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
+      durationMinutes = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60)));
     }
 
     res.json({

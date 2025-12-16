@@ -25,16 +25,19 @@ router.get('/', authenticateToken, async (req, res) => {
           v.plate_number,
           v.vehicle_type,
           v.brand,
+          pa.parking_area_id,
           pa.parking_area_name as location_name,
           pa.location as location_address,
+          ps.parking_spot_id,
           ps.spot_number,
           ps.spot_type,
+          ps.status as spot_status,
           CASE 
-            WHEN r.end_time IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time)
+            WHEN r.end_time IS NOT NULL THEN GREATEST(1, TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time))
             ELSE NULL
           END as duration_minutes,
           CASE 
-            WHEN r.end_time IS NOT NULL THEN CEIL(TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time) / 60.0)
+            WHEN r.end_time IS NOT NULL THEN GREATEST(1, TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time)) / 60.0
             ELSE NULL
           END as hours_deducted
         FROM reservations r
@@ -128,16 +131,19 @@ router.get('/parking', authenticateToken, async (req, res) => {
         v.plate_number,
         v.vehicle_type,
         v.brand,
+        pa.parking_area_id,
         pa.parking_area_name as location_name,
         pa.location as location_address,
+        ps.parking_spot_id,
         ps.spot_number,
         ps.spot_type,
+        ps.status as spot_status,
         CASE 
-          WHEN r.end_time IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time)
+          WHEN r.end_time IS NOT NULL THEN GREATEST(1, TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time))
           ELSE NULL
         END as duration_minutes,
         CASE 
-          WHEN r.end_time IS NOT NULL THEN CEIL(TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time) / 60.0)
+          WHEN r.end_time IS NOT NULL THEN GREATEST(1, TIMESTAMPDIFF(MINUTE, r.start_time, r.end_time)) / 60.0
           ELSE NULL
         END as hours_deducted
       FROM reservations r
@@ -329,17 +335,19 @@ router.get('/frequent-spots', authenticateToken, async (req, res) => {
     // Get most frequently used parking spots based on reservation count
     const frequentSpots = await db.query(`
       SELECT 
+        pa.parking_area_id,
         pa.parking_area_name as location_name,
         pa.location as location_address,
         ps.spot_number,
         ps.spot_type,
         ps.parking_spot_id,
+        ps.status as spot_status,
         COUNT(r.reservation_id) as usage_count,
         MAX(r.time_stamp) as last_used,
-        ps.status as spot_status,
         CASE 
           WHEN ps.status = 'available' THEN 'AVAILABLE'
           WHEN ps.status = 'occupied' THEN 'OCCUPIED'
+          WHEN ps.status = 'reserved' THEN 'RESERVED'
           ELSE 'UNKNOWN'
         END as status
       FROM reservations r
@@ -355,23 +363,38 @@ router.get('/frequent-spots', authenticateToken, async (req, res) => {
     // Get current availability for each spot
     const spotsWithAvailability = await Promise.all(
       frequentSpots.map(async (spot) => {
-        // Check if spot is currently available
+        // Check if spot is currently reserved or active by any user
         const currentReservation = await db.query(`
-          SELECT r.reservation_id, r.booking_status, r.start_time, r.end_time
+          SELECT r.reservation_id, r.booking_status, r.start_time, r.end_time, r.user_id
           FROM reservations r
           WHERE r.parking_spots_id = ? 
-          AND r.booking_status IN ('active', 'confirmed')
-          AND r.start_time <= NOW()
+          AND r.booking_status IN ('reserved', 'active')
           AND (r.end_time IS NULL OR r.end_time > NOW())
-          ORDER BY r.start_time DESC
+          ORDER BY r.time_stamp DESC
           LIMIT 1
         `, [spot.parking_spot_id]);
 
-        const isCurrentlyAvailable = currentReservation.length === 0;
+        // Determine status: use spot's actual status from parking_spot table
+        // But also check if there's an active reservation
+        let finalStatus = spot.status; // Default to spot's status from parking_spot table
+        
+        if (currentReservation.length > 0) {
+          const reservation = currentReservation[0];
+          // If current user has the reservation, it's their spot (could be reserved or active)
+          if (reservation.user_id === req.user.user_id) {
+            finalStatus = reservation.booking_status === 'active' ? 'ACTIVE' : 'RESERVED';
+          } else {
+            // Another user has it reserved/active
+            finalStatus = reservation.booking_status === 'active' ? 'OCCUPIED' : 'RESERVED';
+          }
+        } else {
+          // No active reservation, use spot's status
+          finalStatus = spot.status;
+        }
         
         return {
           ...spot,
-          status: isCurrentlyAvailable ? 'AVAILABLE' : 'OCCUPIED',
+          status: finalStatus,
           current_reservation: currentReservation[0] || null
         };
       })

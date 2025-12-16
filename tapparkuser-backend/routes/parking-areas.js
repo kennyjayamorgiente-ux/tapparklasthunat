@@ -43,9 +43,9 @@ router.get('/areas', async (req, res) => {
 router.get('/areas/:areaId/spots', async (req, res) => {
   try {
     const { areaId } = req.params;
-    const { vehicleType } = req.query; // Optional vehicle type filter
+    const { vehicleType, includeAll } = req.query; // Optional vehicle type filter and includeAll flag
     
-    console.log(`🔍 Getting spots for area ${areaId}, vehicle type: ${vehicleType}`);
+    console.log(`🔍 Getting spots for area ${areaId}, vehicle type: ${vehicleType}, includeAll: ${includeAll}`);
     console.log(`🔍 All query params:`, req.query);
     console.log(`🔍 Full URL:`, req.originalUrl);
 
@@ -58,10 +58,15 @@ router.get('/areas/:areaId/spots', async (req, res) => {
         psec.section_name
       FROM parking_spot ps
       JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
-      WHERE psec.parking_area_id = ? AND ps.status = 'available'
+      WHERE psec.parking_area_id = ?
     `;
 
     const params = [areaId];
+
+    // Only filter by status if includeAll is not set (for backward compatibility)
+    if (!includeAll || includeAll === 'false') {
+      query += ` AND ps.status = 'available'`;
+    }
 
     // Filter by vehicle type if provided
     if (vehicleType) {
@@ -82,7 +87,7 @@ router.get('/areas/:areaId/spots', async (req, res) => {
 
     const spots = await db.query(query, params);
     
-    console.log(`📋 Found ${spots.length} spots:`, spots.map(s => `${s.spot_number} (${s.spot_type})`));
+    console.log(`📋 Found ${spots.length} spots:`, spots.map(s => `${s.spot_number} (${s.status}, ${s.spot_type})`));
 
     res.json({
       success: true,
@@ -178,27 +183,7 @@ router.post('/book', authenticateToken, async (req, res) => {
       });
     }
 
-    // Check if spot is still available and get spot type
-    const spots = await db.query(
-      'SELECT status, spot_type FROM parking_spot WHERE parking_spot_id = ?',
-      [spotId]
-    );
-
-    if (spots.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Parking spot not found'
-      });
-    }
-
-    if (spots[0].status !== 'available') {
-      return res.status(400).json({
-        success: false,
-        message: 'Parking spot is no longer available'
-      });
-    }
-
-    // Get vehicle type to validate compatibility
+    // Get vehicle type to validate compatibility (before transaction)
     const vehicleDetails = await db.query(
       'SELECT plate_number, vehicle_type, brand FROM vehicles WHERE vehicle_id = ?',
       [vehicleId]
@@ -211,139 +196,193 @@ router.post('/book', authenticateToken, async (req, res) => {
       });
     }
 
-    const vehicleType = vehicleDetails[0].vehicle_type;
-    const spotType = spots[0].spot_type;
-    
-    console.log('🔍 Vehicle type from DB:', vehicleType);
-    console.log('🔍 Spot type from DB:', spotType);
-    console.log('🔍 Vehicle details:', vehicleDetails[0]);
-    console.log('🔍 Spot details:', spots[0]);
-
-    // Map vehicle types to spot types for compatibility
-    let expectedSpotType = vehicleType.toLowerCase();
-    if (vehicleType.toLowerCase() === 'bicycle') {
-      expectedSpotType = 'bike';
-    } else if (vehicleType.toLowerCase() === 'ebike') {
-      expectedSpotType = 'bike';
-    }
-    
-    console.log('🔍 Expected spot type:', expectedSpotType);
-    console.log('🔍 Actual spot type:', spotType);
-    console.log('🔍 Types match?', expectedSpotType === spotType.toLowerCase());
-
-    // Validate vehicle type compatibility with spot type (case-insensitive)
-    if (expectedSpotType !== spotType.toLowerCase()) {
-      console.log('❌ Type mismatch - rejecting booking');
-      return res.status(400).json({
-        success: false,
-        errorCode: 'VEHICLE_TYPE_MISMATCH',
-        message: `This parking spot is for ${spotType}s only. Your vehicle is a ${vehicleType}.`,
-        data: {
-          vehicleType: vehicleType,
-          spotType: spotType,
-          expectedSpotType: expectedSpotType
-        }
-      });
-    }
-    
-    console.log('✅ Type validation passed');
-
     const areaDetails = await db.query(
       'SELECT parking_area_name, location FROM parking_area WHERE parking_area_id = ?',
       [areaId]
     );
 
-    const spotDetails = await db.query(
-      'SELECT spot_number, spot_type FROM parking_spot WHERE parking_spot_id = ?',
-      [spotId]
-    );
-
-    if (vehicleDetails.length === 0 || areaDetails.length === 0 || spotDetails.length === 0) {
+    if (areaDetails.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid vehicle, area, or spot information'
+        message: 'Parking area not found'
       });
     }
 
-    // Update spot status to 'reserved' to prevent double booking
-    await db.query(
-      'UPDATE parking_spot SET status = ? WHERE parking_spot_id = ?',
-      ['reserved', spotId]
-    );
-
-    // Create reservation with detailed information
-    const startTime = new Date();
-    
-    // Generate QR code data with reservation information
-    const qrData = {
-      reservationId: null, // Will be set after insert
-      userId: req.user.user_id,
-      vehicleId: vehicleId,
-      spotId: spotId,
-      areaId: areaId,
-      plateNumber: vehicleDetails[0].plate_number,
-      parkingArea: areaDetails[0].parking_area_name,
-      spotNumber: spotDetails[0].spot_number,
-      timestamp: Date.now()
-    };
-    
-    const insertResult = await db.query(`
-      INSERT INTO reservations (
-        user_id, vehicle_id, parking_spots_id, time_stamp, start_time, 
-        booking_status, QR
-      ) VALUES (?, ?, ?, NOW(), NULL, 'reserved', '')
-    `, [req.user.user_id, vehicleId, spotId]);
-
-    const reservationId = insertResult.insertId;
-    
-    // Update QR data with actual reservation ID
-    qrData.reservationId = reservationId;
-    
-    // Generate QR code as data URL
-    const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
-      width: 256,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
+    // Use transaction with row-level locking to prevent race conditions
+    // This ensures only one user can book the spot at a time
+    let connection = null;
+    try {
+      if (!db.connection) {
+        await db.connect();
       }
-    });
-    
-    // Update the reservation with the QR code
-    await db.query(
-      'UPDATE reservations SET QR = ? WHERE reservation_id = ?',
-      [qrCodeDataURL, reservationId]
-    );
 
-    // Log parking booking
-    await logUserActivity(
-      req.user.user_id,
-      ActionTypes.PARKING_BOOK,
-      `Parking spot booked: ${spotDetails[0].spot_number} at ${areaDetails[0].parking_area_name} for vehicle ${vehicleDetails[0].plate_number}`,
-      reservationId
-    );
+      // Get a connection from the pool for transaction
+      connection = await db.connection.getConnection();
+      await connection.beginTransaction();
 
-    res.json({
-      success: true,
-      data: {
-        reservationId,
-        qrCode: qrCodeDataURL,
-        message: 'Parking spot booked successfully',
-        bookingDetails: {
+      // Lock the spot row and check availability atomically
+      const [lockedSpots] = await connection.execute(
+        'SELECT status, spot_type, spot_number FROM parking_spot WHERE parking_spot_id = ? FOR UPDATE',
+        [spotId]
+      );
+
+      if (lockedSpots.length === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Parking spot not found'
+        });
+      }
+
+      const spot = lockedSpots[0];
+
+      // Check if spot is available
+      if (spot.status !== 'available') {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Parking spot is no longer available',
+          errorCode: 'SPOT_UNAVAILABLE'
+        });
+      }
+
+      const vehicleType = vehicleDetails[0].vehicle_type;
+      const spotType = spot.spot_type;
+      
+      console.log('🔍 Vehicle type from DB:', vehicleType);
+      console.log('🔍 Spot type from DB:', spotType);
+
+      // Map vehicle types to spot types for compatibility
+      let expectedSpotType = vehicleType.toLowerCase();
+      if (vehicleType.toLowerCase() === 'bicycle') {
+        expectedSpotType = 'bike';
+      } else if (vehicleType.toLowerCase() === 'ebike') {
+        expectedSpotType = 'bike';
+      }
+      
+      console.log('🔍 Expected spot type:', expectedSpotType);
+      console.log('🔍 Actual spot type:', spotType);
+      console.log('🔍 Types match?', expectedSpotType === spotType.toLowerCase());
+
+      // Validate vehicle type compatibility with spot type (case-insensitive)
+      if (expectedSpotType !== spotType.toLowerCase()) {
+        await connection.rollback();
+        connection.release();
+        console.log('❌ Type mismatch - rejecting booking');
+        return res.status(400).json({
+          success: false,
+          errorCode: 'VEHICLE_TYPE_MISMATCH',
+          message: `This parking spot is for ${spotType}s only. Your vehicle is a ${vehicleType}.`,
+          data: {
+            vehicleType: vehicleType,
+            spotType: spotType,
+            expectedSpotType: expectedSpotType
+          }
+        });
+      }
+      
+      console.log('✅ Type validation passed');
+
+      // Atomically update spot status to 'reserved' (only if still available)
+      // This prevents double booking even if two requests pass the check above
+      const [updateResult] = await connection.execute(
+        'UPDATE parking_spot SET status = ? WHERE parking_spot_id = ? AND status = ?',
+        ['reserved', spotId, 'available']
+      );
+
+      // Check if the update actually affected a row
+      if (updateResult.affectedRows === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Parking spot was just booked by another user. Please try a different spot.',
+          errorCode: 'SPOT_ALREADY_BOOKED'
+        });
+      }
+
+      // Create reservation within the same transaction
+      const [insertResult] = await connection.execute(`
+        INSERT INTO reservations (
+          user_id, vehicle_id, parking_spots_id, time_stamp, start_time, 
+          booking_status, QR
+        ) VALUES (?, ?, ?, NOW(), NULL, 'reserved', '')
+      `, [req.user.user_id, vehicleId, spotId]);
+
+      const reservationId = insertResult.insertId;
+      
+      // Generate QR code data with reservation information
+      const qrData = {
+        reservationId: reservationId,
+        userId: req.user.user_id,
+        vehicleId: vehicleId,
+        spotId: spotId,
+        areaId: areaId,
+        plateNumber: vehicleDetails[0].plate_number,
+        parkingArea: areaDetails[0].parking_area_name,
+        spotNumber: spot.spot_number,
+        timestamp: Date.now()
+      };
+      
+      // Generate QR code as data URL
+      const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
+      // Update the reservation with the QR code within transaction
+      await connection.execute(
+        'UPDATE reservations SET QR = ? WHERE reservation_id = ?',
+        [qrCodeDataURL, reservationId]
+      );
+
+      // Commit the transaction
+      await connection.commit();
+      connection.release();
+
+      // Log parking booking (outside transaction)
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.PARKING_BOOK,
+        `Parking spot booked: ${spot.spot_number} at ${areaDetails[0].parking_area_name} for vehicle ${vehicleDetails[0].plate_number}`,
+        reservationId
+      );
+
+      res.json({
+        success: true,
+        data: {
           reservationId,
           qrCode: qrCodeDataURL,
-          vehiclePlate: vehicleDetails[0].plate_number,
-          vehicleType: vehicleDetails[0].vehicle_type,
-          vehicleBrand: vehicleDetails[0].brand,
-          areaName: areaDetails[0].parking_area_name,
-          areaLocation: areaDetails[0].location,
-          spotNumber: spotDetails[0].spot_number,
-          spotType: spotDetails[0].spot_type,
-          startTime: null, // Will be set when attendant scans QR
-          status: 'reserved'
+          message: 'Parking spot booked successfully',
+          bookingDetails: {
+            reservationId,
+            qrCode: qrCodeDataURL,
+            vehiclePlate: vehicleDetails[0].plate_number,
+            vehicleType: vehicleDetails[0].vehicle_type,
+            vehicleBrand: vehicleDetails[0].brand,
+            areaName: areaDetails[0].parking_area_name,
+            areaLocation: areaDetails[0].location,
+            spotNumber: spot.spot_number,
+            spotType: spot.spot_type,
+            startTime: null, // Will be set when attendant scans QR
+            status: 'reserved'
+          }
         }
+      });
+
+    } catch (transactionError) {
+      if (connection) {
+        await connection.rollback();
+        connection.release();
       }
-    });
+      throw transactionError;
+    }
 
   } catch (error) {
     console.error('Book parking spot error:', error);

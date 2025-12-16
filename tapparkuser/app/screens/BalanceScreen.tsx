@@ -77,6 +77,14 @@ const getResponsiveMargin = (baseMargin: number) => {
 };
 
 
+// Helper function to format decimal hours to HH.MM format (e.g., 83.5 -> "83.30")
+const formatHoursToHHMM = (decimalHours: number): string => {
+  if (!decimalHours || decimalHours === 0) return '0.00';
+  const hours = Math.floor(decimalHours);
+  const minutes = Math.round((decimalHours - hours) * 60);
+  return `${hours}.${minutes.toString().padStart(2, '0')}`;
+};
+
 const BalanceScreen: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
@@ -207,7 +215,7 @@ const BalanceScreen: React.FC = () => {
     if (transaction.type === 'parking') {
       // For parking sessions, show hours deducted
       const hoursDeducted = transaction.hours_deducted || 0;
-      return `- ${hoursDeducted} hrs`;
+      return `- ${formatHoursToHHMM(hoursDeducted)} hrs`;
     } else if (transaction.payment_type === 'subscription') {
       // For subscription purchases - RELY ON number_of_hours from plans table
       const hours = transaction.number_of_hours;
@@ -542,7 +550,7 @@ const BalanceScreen: React.FC = () => {
                     {selectedTransaction.hours_deducted && (
                       <View style={balanceScreenStyles.detailRow}>
                         <Text style={balanceScreenStyles.detailLabel}>Hours Used:</Text>
-                        <Text style={balanceScreenStyles.detailValue}>{selectedTransaction.hours_deducted} hours</Text>
+                        <Text style={balanceScreenStyles.detailValue}>{formatHoursToHHMM(selectedTransaction.hours_deducted)} hours</Text>
                       </View>
                     )}
                   </>

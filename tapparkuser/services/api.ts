@@ -646,10 +646,13 @@ export class ApiService {
     }>('/parking/locations');
   }
 
-  static async getParkingSpots(areaId: number, vehicleType?: string) {
+  static async getParkingSpots(areaId: number, vehicleType?: string, includeAll?: boolean) {
     const query = new URLSearchParams();
     if (vehicleType) {
       query.append('vehicleType', vehicleType);
+    }
+    if (includeAll) {
+      query.append('includeAll', 'true');
     }
 
     const queryString = query.toString();

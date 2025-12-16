@@ -54,6 +54,25 @@ class Database {
     }
   }
 
+  // Execute query and return result with affected rows info
+  async execute(sql, params = []) {
+    try {
+      if (!this.connection) {
+        await this.connect();
+      }
+      
+      const [rows, fields] = await this.connection.execute(sql, params);
+      return {
+        rows,
+        affectedRows: rows.affectedRows || 0,
+        insertId: rows.insertId || null
+      };
+    } catch (error) {
+      console.error('Database execute error:', error);
+      throw error;
+    }
+  }
+
   async transaction(queries) {
     let connection = null;
     try {
@@ -68,7 +87,11 @@ class Database {
       const results = [];
       for (const { sql, params } of queries) {
         const [rows] = await connection.execute(sql, params);
-        results.push(rows);
+        results.push({
+          rows,
+          affectedRows: rows.affectedRows || 0,
+          insertId: rows.insertId || null
+        });
       }
       
       await connection.commit();

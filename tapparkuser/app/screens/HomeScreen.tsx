@@ -476,20 +476,24 @@ export default function HomeScreen() {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate to ActiveParkingScreen with booking details
-                showLoading('Loading parking session...');
-                router.push({
-                  pathname: '/screens/ActiveParkingScreen',
-                  params: {
-                    reservationId: response.data.reservationId,
-                    sessionId: response.data.reservationId
-                  }
+                // Allow Alert to dismiss first, then navigate smoothly
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
+                    router.push({
+                      pathname: '/screens/ActiveParkingScreen',
+                      params: {
+                        reservationId: response.data.reservationId,
+                        sessionId: response.data.reservationId
+                      }
+                    });
+                    setTimeout(() => hideLoading(), 500);
+                    setIsBookingModalVisible(false);
+                    setSelectedVehicleForParking(null);
+                    setSelectedParkingArea(null);
+                    setParkingSpots([]);
+                  }, 150);
                 });
-                setTimeout(() => hideLoading(), 300);
-                setIsBookingModalVisible(false);
-                setSelectedVehicleForParking(null);
-                setSelectedParkingArea(null);
-                setParkingSpots([]);
               }
             }
           ]
@@ -576,30 +580,34 @@ export default function HomeScreen() {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate to ActiveParkingScreen with complete booking details
-                showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
-                router.push({
-                  pathname: '/screens/ActiveParkingScreen',
-                  params: {
-                    sessionId: bookingDetails.reservationId,
-                    vehicleId: selectedVehicleForParking.id,
-                    vehiclePlate: bookingDetails.vehiclePlate,
-                    vehicleType: bookingDetails.vehicleType,
-                    vehicleBrand: bookingDetails.vehicleBrand,
-                    areaName: bookingDetails.areaName,
-                    areaLocation: bookingDetails.areaLocation,
-                    spotNumber: bookingDetails.spotNumber,
-                    spotType: bookingDetails.spotType,
-                    startTime: bookingDetails.startTime,
-                    status: bookingDetails.status
-                  }
+                // Allow Alert to dismiss first, then navigate smoothly
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
+                    router.push({
+                      pathname: '/screens/ActiveParkingScreen',
+                      params: {
+                        sessionId: bookingDetails.reservationId,
+                        vehicleId: selectedVehicleForParking.id,
+                        vehiclePlate: bookingDetails.vehiclePlate,
+                        vehicleType: bookingDetails.vehicleType,
+                        vehicleBrand: bookingDetails.vehicleBrand,
+                        areaName: bookingDetails.areaName,
+                        areaLocation: bookingDetails.areaLocation,
+                        spotNumber: bookingDetails.spotNumber,
+                        spotType: bookingDetails.spotType,
+                        startTime: bookingDetails.startTime,
+                        status: bookingDetails.status
+                      }
+                    });
+                    setTimeout(() => hideLoading(), 500);
+                    setIsBookingModalVisible(false);
+                    setSelectedVehicleForParking(null);
+                    setSelectedParkingArea(null);
+                    setAssignedSpotDetails(null);
+                    setAssignedSlot('');
+                  }, 150);
                 });
-                setTimeout(() => hideLoading(), 300);
-                setIsBookingModalVisible(false);
-                setSelectedVehicleForParking(null);
-                setSelectedParkingArea(null);
-                setAssignedSpotDetails(null);
-                setAssignedSlot('');
               }
             }
           ]
@@ -707,6 +715,25 @@ export default function HomeScreen() {
   const handleDirectSpotBooking = async (vehicle: any, spot: any) => {
     console.log('🎯 handleDirectSpotBooking called with:', { vehicle, spot });
     try {
+      // Check spot availability first - don't attempt booking if spot is occupied/reserved
+      const spotStatus = spot.spot_status || spot.status;
+      
+      // Check if spot status is not available
+      if (spotStatus && spotStatus !== 'available' && spotStatus !== 'AVAILABLE') {
+        const statusMessage = spotStatus === 'occupied' || spotStatus === 'OCCUPIED' 
+          ? 'This parking spot is currently occupied.' 
+          : spotStatus === 'reserved' || spotStatus === 'RESERVED'
+          ? 'This parking spot is currently reserved.'
+          : 'This parking spot is not available for booking.';
+        
+        Alert.alert(
+          'Spot Not Available',
+          statusMessage + ' Please try a different spot.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
+      
       // Check for current booking first
       const currentBookingResponse = await ApiService.getMyBookings();
       console.log('🔍 My bookings response:', JSON.stringify(currentBookingResponse, null, 2));
@@ -730,16 +757,27 @@ export default function HomeScreen() {
         }
       }
 
+      // Get areaId from spot data or selectedParkingArea
+      // For frequent spots, the areaId should be in spot.parking_area_id
+      // For regular booking, it's in selectedParkingArea.id
+      const areaId = spot.parking_area_id || selectedParkingArea?.id;
+      
+      if (!areaId) {
+        console.error('❌ Missing areaId for booking:', { spot, selectedParkingArea });
+        Alert.alert('Error', 'Parking area information is missing. Please try again.');
+        return;
+      }
+      
       console.log('🚀 Calling ApiService.bookParkingSpot with:', {
         vehicleId: vehicle.id,
         spotId: spot.parking_spot_id,
-        areaId: selectedParkingArea.id
+        areaId: areaId
       });
       
       const response = await ApiService.bookParkingSpot(
         vehicle.id,
         spot.parking_spot_id,
-        selectedParkingArea.id
+        areaId
       );
       
       console.log('🎯 Booking response:', JSON.stringify(response, null, 2));
@@ -769,28 +807,33 @@ export default function HomeScreen() {
                   status: response.data.bookingDetails.status
                 });
                 
-                showLoading('Loading parking session...');
-                router.push({
-                  pathname: '/screens/ActiveParkingScreen',
-                  params: {
-                    sessionId: response.data.reservationId,
-                    vehicleId: vehicle.id,
-                    vehiclePlate: response.data.bookingDetails.vehiclePlate,
-                    vehicleType: response.data.bookingDetails.vehicleType,
-                    vehicleBrand: response.data.bookingDetails.vehicleBrand,
-                    areaName: response.data.bookingDetails.areaName,
-                    areaLocation: response.data.bookingDetails.areaLocation,
-                    spotNumber: response.data.bookingDetails.spotNumber,
-                    spotType: response.data.bookingDetails.spotType,
-                    startTime: response.data.bookingDetails.startTime,
-                    status: response.data.bookingDetails.status
-                  }
+                // Allow Alert to dismiss first, then navigate smoothly
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
+                    router.push({
+                      pathname: '/screens/ActiveParkingScreen',
+                      params: {
+                        sessionId: response.data.reservationId,
+                        vehicleId: vehicle.id,
+                        vehiclePlate: response.data.bookingDetails.vehiclePlate,
+                        vehicleType: response.data.bookingDetails.vehicleType,
+                        vehicleBrand: response.data.bookingDetails.vehicleBrand,
+                        areaName: response.data.bookingDetails.areaName,
+                        areaLocation: response.data.bookingDetails.areaLocation,
+                        spotNumber: response.data.bookingDetails.spotNumber,
+                        spotType: response.data.bookingDetails.spotType,
+                        startTime: response.data.bookingDetails.startTime,
+                        status: response.data.bookingDetails.status
+                      }
+                    });
+                    setTimeout(() => hideLoading(), 500);
+                    // Reset all states
+                    setSelectedSpotForBooking(null);
+                    setSelectedVehicleForParking(null);
+                    setSelectedParkingArea(null);
+                  }, 150);
                 });
-                setTimeout(() => hideLoading(), 300);
-                // Reset all states
-                setSelectedSpotForBooking(null);
-                setSelectedVehicleForParking(null);
-                setSelectedParkingArea(null);
               }
             }
           ]
@@ -800,13 +843,33 @@ export default function HomeScreen() {
         if ((response.data as any)?.errorCode === 'VEHICLE_TYPE_MISMATCH') {
           setMismatchData((response.data as any).data);
           setShowVehicleMismatchModal(true);
+        } else if ((response.data as any)?.errorCode === 'SPOT_UNAVAILABLE' || 
+                   (response.data as any)?.message?.includes('no longer available') ||
+                   (response.data as any)?.message?.includes('not available')) {
+          Alert.alert(
+            'Spot Not Available',
+            'This parking spot is no longer available. It may have been booked by another user. Please try a different spot.',
+            [{ text: 'OK', style: 'default' }]
+          );
         } else {
           Alert.alert('Error', response.data?.message || 'Failed to book parking spot');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error booking parking spot:', error);
-      Alert.alert('Error', 'Failed to book parking spot');
+      
+      // Check if error is about spot not being available
+      if (error?.message?.includes('no longer available') || 
+          error?.message?.includes('not available') ||
+          error?.message?.includes('SPOT_UNAVAILABLE')) {
+        Alert.alert(
+          'Spot Not Available',
+          'This parking spot is no longer available. It may have been booked by another user. Please try a different spot.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to book parking spot. Please try again.');
+      }
     }
   };
 
@@ -1485,7 +1548,8 @@ export default function HomeScreen() {
     try {
       setIsLoadingParkingSpots(true);
       // Don't clear spots immediately - keep previous spots visible while loading
-      const response = await ApiService.getParkingSpots(area.id);
+      // Pass includeAll=true to get all spots regardless of status
+      const response = await ApiService.getParkingSpots(area.id, undefined, true);
       if (response.success) {
         setSpotsForSeeAll(response.data.spots);
       } else {
@@ -2591,17 +2655,12 @@ export default function HomeScreen() {
         animationType="fade"
         onRequestClose={handleCloseSeeAllSpotsModal}
       >
-        <Pressable 
+        <View 
           style={homeScreenStyles.modalOverlay}
-          onPress={(e) => {
-            // Close dropdown if clicking outside the modal container
-            if (isAreaDropdownVisible) {
-              setIsAreaDropdownVisible(false);
-            }
-          }}
+          pointerEvents="box-none"
         >
-          <Pressable 
-            onPress={(e) => e.stopPropagation()}
+          <View 
+            pointerEvents="box-none"
             onStartShouldSetResponder={() => false}
             onMoveShouldSetResponder={() => false}
           >
@@ -2617,7 +2676,7 @@ export default function HomeScreen() {
                 <Text style={[homeScreenStyles.modalTitle, { marginBottom: 8 }]}>See All Spots</Text>
                 
                 {/* Area Dropdown */}
-                <View style={{ position: 'relative' }}>
+                <View style={{ position: 'relative', zIndex: isAreaDropdownVisible ? 1001 : 1 }} pointerEvents={isAreaDropdownVisible ? 'auto' : 'box-none'}>
                   <TouchableOpacity 
                     style={{
                       backgroundColor: colors.card,
@@ -2655,55 +2714,57 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                   
                   {isAreaDropdownVisible && (
-                    <View style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      marginTop: 4,
-                      backgroundColor: colors.backgroundSecondary || colors.card,
-                      borderWidth: 1,
-                      borderColor: colors.primary,
-                      borderRadius: 8,
-                      maxHeight: 200,
-                      elevation: 10,
-                      shadowColor: colors.shadow,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      zIndex: 1001,
-                    }}>
-                      <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 200 }}>
-                        {parkingAreas.map((area) => (
-                          <TouchableOpacity
-                            key={area.id}
-                            style={{
-                              paddingHorizontal: 12,
-                              paddingVertical: 12,
-                              borderBottomWidth: 1,
-                              borderBottomColor: colors.border,
-                              backgroundColor: selectedAreaForSeeAll?.id === area.id ? colors.primary + '10' : 'transparent',
-                            }}
-                            onPress={() => handleAreaSelectForSeeAll(area)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={{
-                              fontSize: getResponsiveFontSize(14),
-                              color: selectedAreaForSeeAll?.id === area.id ? colors.primary : colors.text,
-                              fontWeight: selectedAreaForSeeAll?.id === area.id ? '600' : '400',
-                            }}>
-                              {area.name}
-                            </Text>
-                            <Text style={{
-                              fontSize: getResponsiveFontSize(12),
-                              color: colors.textSecondary,
-                              marginTop: 2,
-                            }}>
-                              {area.available_spots || 0} / {area.total_spots || 0} spots available
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
+                    <View 
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        marginTop: 4,
+                        backgroundColor: colors.backgroundSecondary || colors.card,
+                        borderWidth: 1,
+                        borderColor: colors.primary,
+                        borderRadius: 8,
+                        maxHeight: 200,
+                        elevation: 10,
+                        shadowColor: colors.shadow,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                        zIndex: 1001,
+                        overflow: 'hidden',
+                      }}
+                      pointerEvents="auto"
+                    >
+                      {parkingAreas.map((area) => (
+                        <TouchableOpacity
+                          key={area.id}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 12,
+                            borderBottomWidth: 1,
+                            borderBottomColor: colors.border,
+                            backgroundColor: selectedAreaForSeeAll?.id === area.id ? colors.primary + '10' : 'transparent',
+                          }}
+                          onPress={() => handleAreaSelectForSeeAll(area)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{
+                            fontSize: getResponsiveFontSize(14),
+                            color: selectedAreaForSeeAll?.id === area.id ? colors.primary : colors.text,
+                            fontWeight: selectedAreaForSeeAll?.id === area.id ? '600' : '400',
+                          }}>
+                            {area.name}
+                          </Text>
+                          <Text style={{
+                            fontSize: getResponsiveFontSize(12),
+                            color: colors.textSecondary,
+                            marginTop: 2,
+                          }}>
+                            {area.available_spots || 0} / {area.total_spots || 0} spots available
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -2725,12 +2786,15 @@ export default function HomeScreen() {
                     <Text style={homeScreenStyles.emptyStateSubtext}>All spots in this area are currently occupied</Text>
                   </View>
                 ) : (
-                  <View style={{ 
-                    flex: 1,
-                    position: 'relative', 
-                    minHeight: 100,
-                    width: '100%',
-                  }}>
+                  <View 
+                    style={{ 
+                      flex: 1,
+                      position: 'relative', 
+                      minHeight: 100,
+                      width: '100%',
+                    }}
+                    pointerEvents="auto"
+                  >
                     <ScrollView 
                       style={{ 
                         flex: 1,
@@ -2739,24 +2803,60 @@ export default function HomeScreen() {
                       }}
                       contentContainerStyle={{
                         paddingBottom: getResponsivePadding(10),
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        justifyContent: 'space-between',
                       }}
                       showsVerticalScrollIndicator={true}
                       nestedScrollEnabled={true}
-                      scrollEnabled={true}
+                      scrollEnabled={!isAreaDropdownVisible}
                       bounces={true}
                       scrollEventThrottle={16}
                       removeClippedSubviews={false}
-                      onStartShouldSetResponder={() => true}
-                      onMoveShouldSetResponder={() => true}
+                      keyboardShouldPersistTaps="handled"
                     >
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                        {spotsForSeeAll.map((spot) => (
+                      {spotsForSeeAll.map((spot) => {
+                        // Determine color based on status (same logic as parking layout, excluding blue)
+                        const spotStatusValue = spot.status || 'unknown';
+                        let backgroundColor = 'rgba(200, 200, 200, 0.1)'; // Gray for unknown
+                        let borderColor = 'rgba(200, 200, 200, 0.4)';
+                        let statusBadgeBg = 'rgba(200, 200, 200, 0.2)';
+                        let statusBadgeText = 'rgba(200, 200, 200, 1)';
+                        
+                        switch (spotStatusValue) {
+                          case 'available':
+                            backgroundColor = 'rgba(52, 199, 89, 0.1)'; // Green
+                            borderColor = 'rgba(52, 199, 89, 0.6)';
+                            statusBadgeBg = 'rgba(52, 199, 89, 0.2)';
+                            statusBadgeText = 'rgba(52, 199, 89, 1)';
+                            break;
+                          case 'occupied':
+                            backgroundColor = 'rgba(255, 59, 48, 0.1)'; // Red
+                            borderColor = 'rgba(255, 59, 48, 0.6)';
+                            statusBadgeBg = 'rgba(255, 59, 48, 0.2)';
+                            statusBadgeText = 'rgba(255, 59, 48, 1)';
+                            break;
+                          case 'reserved':
+                            backgroundColor = 'rgba(255, 204, 0, 0.1)'; // Yellow/Orange for reserved
+                            borderColor = 'rgba(255, 204, 0, 0.6)';
+                            statusBadgeBg = 'rgba(255, 204, 0, 0.2)';
+                            statusBadgeText = 'rgba(255, 204, 0, 1)';
+                            break;
+                          default:
+                            backgroundColor = 'rgba(200, 200, 200, 0.1)'; // Gray
+                            borderColor = 'rgba(200, 200, 200, 0.4)';
+                            statusBadgeBg = 'rgba(200, 200, 200, 0.2)';
+                            statusBadgeText = 'rgba(200, 200, 200, 1)';
+                        }
+                        
+                        return (
                           <View
                             key={spot.id}
+                            pointerEvents="none"
                             style={{
-                              backgroundColor: colors.card,
+                              backgroundColor: backgroundColor,
                               borderWidth: 1,
-                              borderColor: spot.status === 'available' ? colors.success : colors.error,
+                              borderColor: borderColor,
                               borderRadius: 8,
                               padding: 12,
                               marginBottom: 8,
@@ -2778,20 +2878,20 @@ export default function HomeScreen() {
                               paddingHorizontal: 8, 
                               paddingVertical: 4, 
                               borderRadius: 4,
-                              backgroundColor: spot.status === 'available' ? colors.success + '20' : colors.error + '20',
+                              backgroundColor: statusBadgeBg,
                               alignSelf: 'flex-start'
                             }}>
                               <Text style={{ 
                                 fontSize: getResponsiveFontSize(10), 
                                 fontWeight: '600',
-                                color: spot.status === 'available' ? colors.success : colors.error
+                                color: statusBadgeText
                               }}>
-                                {spot.status?.toUpperCase() || 'UNKNOWN'}
+                                {spotStatusValue.toUpperCase()}
                               </Text>
                             </View>
                           </View>
-                        ))}
-                      </View>
+                        );
+                      })}
                     </ScrollView>
                     
                     {isLoadingParkingSpots && (
@@ -2827,8 +2927,8 @@ export default function HomeScreen() {
               <Text style={homeScreenStyles.closeButtonText}>Close</Text>
             </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
     </View>

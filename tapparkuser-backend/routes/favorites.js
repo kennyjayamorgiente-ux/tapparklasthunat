@@ -19,7 +19,7 @@ router.get('/', authenticateToken, async (req, res) => {
         ps.status as spot_status,
         ps.parking_section_id,
         psec.section_name,
-        psec.parking_area_id,
+        psec.parking_area_id as parking_area_id,
         pa.parking_area_name,
         pa.location
       FROM favorites f
@@ -30,10 +30,51 @@ router.get('/', authenticateToken, async (req, res) => {
       ORDER BY f.created_at DESC
     `, [req.user.user_id]);
 
+    // Get current availability for each favorite spot
+    const favoritesWithAvailability = await Promise.all(
+      favorites.map(async (favorite) => {
+        // Check if spot is currently reserved or active by any user
+        const currentReservation = await db.query(`
+          SELECT r.reservation_id, r.booking_status, r.start_time, r.end_time, r.user_id
+          FROM reservations r
+          WHERE r.parking_spots_id = ? 
+          AND r.booking_status IN ('reserved', 'active')
+          AND (r.end_time IS NULL OR r.end_time > NOW())
+          ORDER BY r.time_stamp DESC
+          LIMIT 1
+        `, [favorite.parking_spot_id]);
+
+        // Determine display status: use spot's actual status from parking_spot table
+        // But also check if there's an active reservation for better UX
+        let displayStatus = favorite.spot_status; // Default to spot's status from parking_spot table
+        
+        if (currentReservation.length > 0) {
+          const reservation = currentReservation[0];
+          // If current user has the reservation, it's their spot (could be reserved or active)
+          if (reservation.user_id === req.user.user_id) {
+            displayStatus = reservation.booking_status === 'active' ? 'active' : 'reserved';
+          } else {
+            // Another user has it reserved/active
+            displayStatus = reservation.booking_status === 'active' ? 'occupied' : 'reserved';
+          }
+        } else {
+          // No active reservation, use spot's status from database
+          displayStatus = favorite.spot_status;
+        }
+        
+        return {
+          ...favorite,
+          status: displayStatus, // Display status for UI
+          spot_status: favorite.spot_status, // Keep original database status for booking checks
+          current_reservation: currentReservation[0] || null
+        };
+      })
+    );
+
     res.json({
       success: true,
       data: {
-        favorites: favorites
+        favorites: favoritesWithAvailability
       }
     });
 

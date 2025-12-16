@@ -278,9 +278,11 @@ router.post('/end/:sessionId', authenticateToken, async (req, res) => {
     const session = sessions[0];
     const endTime = new Date();
     const startTime = new Date(session.start_time);
-    const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
-    const durationHours = Math.ceil(durationMinutes / 60);
-    const totalCost = durationHours * session.hourly_rate;
+    // Calculate duration in minutes, ensuring minimum of 1 minute (even for seconds)
+    const durationMinutes = Math.max(1, Math.ceil((endTime - startTime) / (1000 * 60)));
+    // Convert to decimal hours (e.g., 1 minute = 0.0167 hours, 30 minutes = 0.50 hours)
+    const durationHours = durationMinutes / 60;
+    const totalCost = Math.ceil(durationHours) * session.hourly_rate; // Round up for cost calculation
 
     // Check user's subscription hours - this is the ONLY payment method
     const subscriptionHours = await db.query(`
@@ -304,10 +306,15 @@ router.post('/end/:sessionId', authenticateToken, async (req, res) => {
       });
     }
 
+    // Compare decimal hours (e.g., 0.50 for 30 minutes)
     if (subscriptionHours[0].hours_remaining < durationHours) {
+      const hoursPart = Math.floor(durationHours);
+      const minutesPart = Math.round((durationHours - hoursPart) * 60);
+      const availableHours = Math.floor(subscriptionHours[0].hours_remaining);
+      const availableMinutes = Math.round((subscriptionHours[0].hours_remaining - availableHours) * 60);
       return res.status(400).json({
         success: false,
-        message: `Insufficient subscription hours. Required: ${durationHours} hours, Available: ${subscriptionHours[0].hours_remaining} hours`
+        message: `Insufficient subscription hours. Required: ${hoursPart} hours ${minutesPart} minutes, Available: ${availableHours} hours ${availableMinutes} minutes`
       });
     }
 
