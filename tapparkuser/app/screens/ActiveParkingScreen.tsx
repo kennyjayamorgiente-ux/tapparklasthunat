@@ -1381,25 +1381,25 @@ const ActiveParkingScreen: React.FC = () => {
                       })}
                       size={(() => {
                         // Responsive QR code size based on screen width
-                        if (screenWidth < 375) return screenWidth * 0.6; // Small screens
-                        if (screenWidth < 414) return screenWidth * 0.65; // Medium screens
-                        if (screenWidth < 768) return Math.min(240, screenWidth * 0.6); // Large phones
-                        if (screenWidth < 1024) return Math.min(280, screenWidth * 0.4); // Tablets
-                        return Math.min(320, screenWidth * 0.35); // Large tablets
+                        if (isSmallScreen) return Math.min(screenWidth * 0.55, 180); // Small screens
+                        if (isMediumScreen) return Math.min(screenWidth * 0.6, 200); // Medium screens
+                        if (isLargeScreen) return Math.min(screenWidth * 0.55, 240); // Large phones
+                        if (isTablet) return Math.min(screenWidth * 0.35, 300); // Tablets
+                        return Math.min(screenWidth * 0.3, 320); // Large tablets
                       })()}
                       color="black"
                       backgroundColor="white"
                       logoSize={(() => {
                         // Responsive logo size
-                        if (screenWidth < 375) return 24;
-                        if (screenWidth < 414) return 28;
-                        if (screenWidth < 768) return 30;
-                        if (screenWidth < 1024) return 35;
+                        if (isSmallScreen) return 20;
+                        if (isMediumScreen) return 24;
+                        if (isLargeScreen) return 28;
+                        if (isTablet) return 35;
                         return 40;
                       })()}
                       logoMargin={2}
                       logoBorderRadius={15}
-                      quietZone={10}
+                      quietZone={isSmallScreen ? 8 : 10}
                     />
                   </View>
                 ) : (
@@ -1412,7 +1412,12 @@ const ActiveParkingScreen: React.FC = () => {
                 </View>
                 )}
               </View>
-              <Text style={activeParkingScreenStyles.qrInstruction}>
+              <Text 
+                style={activeParkingScreenStyles.qrInstruction}
+                numberOfLines={2}
+                adjustsFontSizeToFit={true}
+                minimumFontScale={0.8}
+              >
                 {!isTimerRunning ? 'Waiting for attendant to start parking session...' : 
                  'Parking session is active. Attendant will end the session.'}
               </Text>
@@ -1426,15 +1431,34 @@ const ActiveParkingScreen: React.FC = () => {
               <View style={activeParkingScreenStyles.detailsColumn}>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Display Name</Text>
-                  <Text style={activeParkingScreenStyles.detailValue}>{bookingData.displayName}</Text>
+                  <Text 
+                    style={activeParkingScreenStyles.detailValue}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.85}
+                  >
+                    {bookingData.displayName}
+                  </Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Parking Area</Text>
-                  <Text style={activeParkingScreenStyles.detailValue}>{bookingData.parkingArea.name}</Text>
+                  <Text 
+                    style={activeParkingScreenStyles.detailValue}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.85}
+                  >
+                    {bookingData.parkingArea.name}
+                  </Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Date</Text>
-                  <Text style={activeParkingScreenStyles.detailValue}>
+                  <Text 
+                    style={activeParkingScreenStyles.detailValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.85}
+                  >
                     {new Date(bookingData.timestamps.bookingTime).toLocaleDateString('en-US', {
                       month: '2-digit',
                       day: '2-digit',
@@ -1447,19 +1471,36 @@ const ActiveParkingScreen: React.FC = () => {
               <View style={activeParkingScreenStyles.detailsColumn}>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Vehicle Detail</Text>
-                  <Text style={activeParkingScreenStyles.detailValue}>
+                  <Text 
+                    style={activeParkingScreenStyles.detailValue}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.85}
+                  >
                     {bookingData.vehicleDetails.brand} - {bookingData.vehicleDetails.vehicleType}
                   </Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Parking Slot</Text>
-                  <Text style={activeParkingScreenStyles.detailValue}>
+                  <Text 
+                    style={activeParkingScreenStyles.detailValue}
+                    numberOfLines={2}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.85}
+                  >
                     {bookingData.parkingSlot.spotNumber} ({bookingData.parkingSlot.spotType})
                   </Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Plate Number</Text>
-                  <Text style={activeParkingScreenStyles.detailValue}>{bookingData.vehicleDetails.plateNumber}</Text>
+                  <Text 
+                    style={activeParkingScreenStyles.detailValue}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.85}
+                  >
+                    {bookingData.vehicleDetails.plateNumber}
+                  </Text>
                 </View>
               </View>
             </View>
