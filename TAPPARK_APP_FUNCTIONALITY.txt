@@ -1,0 +1,814 @@
+================================================================================
+                    TAPPARK APPLICATION FUNCTIONALITY DOCUMENTATION
+================================================================================
+
+This document provides a comprehensive overview of all functionality available
+in the TapPark application, covering both User and Attendant interfaces.
+
+================================================================================
+                            TABLE OF CONTENTS
+================================================================================
+
+1. USER SCREENS & FUNCTIONALITY
+2. ATTENDANT SCREENS & FUNCTIONALITY
+3. AUTHENTICATION & ACCOUNT MANAGEMENT
+4. VEHICLE MANAGEMENT
+5. PARKING BOOKING & MANAGEMENT
+6. PAYMENT & SUBSCRIPTION FEATURES
+7. ADDITIONAL FEATURES
+
+================================================================================
+                    1. USER SCREENS & FUNCTIONALITY
+================================================================================
+
+1.1 SPLASH SCREEN (Splash1Screen)
+   - Initial app loading screen
+   - Displays while checking authentication status
+   - Redirects to appropriate screen based on authentication state
+
+1.2 GREETINGS SCREEN (GreetingsScreen)
+   - Welcome screen for new users
+   - Navigation to Login or Signup screens
+   - First-time user introduction
+
+1.3 LOGIN SCREEN (LoginScreen)
+   - User authentication
+   - Email and password input with validation
+   - Password visibility toggle
+   - Form validation (email format, required fields)
+   - Error handling for invalid credentials
+   - Network error handling
+   - Automatic routing based on user type:
+     * Attendant -> Attendant Dashboard
+     * Subscriber -> HomeScreen (or AboutScreen if no vehicles)
+     * Admin -> HomeScreen
+   - Navigation to Signup screen
+   - Back navigation to Greetings screen
+
+1.4 SIGNUP SCREEN (SignupScreen)
+   - New user registration
+   - Fields: School ID, First Name, Last Name, Email, Password
+   - Email format validation
+   - Password strength validation (minimum 6 characters)
+   - Form validation for all required fields
+   - Account creation with backend API
+   - Automatic login after successful registration
+   - Navigation to AboutScreen for vehicle setup
+   - Back navigation to Login screen
+
+1.5 ABOUT SCREEN (AboutScreen)
+   - App introduction and information
+   - Description of TapPark system
+   - "Add Vehicle" button (navigates to AddVehicleScreen)
+   - "Skip for now" option (navigates to HomeScreen)
+   - Shown to new users after registration
+
+1.6 HOME SCREEN (HomeScreen)
+   - Main dashboard for users
+   - Profile picture display (with initials fallback)
+   - Navigation drawer access
+   
+   REGISTERED VEHICLES SECTION:
+   - Horizontal scrollable list of user's registered vehicles
+   - Displays vehicle type, brand, plate number
+   - Vehicle type icons (Car, Motorcycle, Bike/E-bike)
+   - Empty state with "Add Vehicle" button if no vehicles
+   - Tap vehicle card to book parking
+   - Scroll indicators for multiple vehicles
+   
+   FREQUENTLY USED PARKING SPACE SECTION:
+   - Horizontal scrollable list of frequently used parking spots
+   - Shows location name, spot number, spot ID
+   - Displays usage count
+   - Shows current availability status
+   - Time slot information
+   - "BOOK" button for quick booking
+   - Location logos (FPA, FU)
+   - Empty state if no frequent spots
+   - Scroll indicators for multiple spots
+   
+   SELECT PARKING AREA SECTION:
+   - Horizontal scrollable parking area cards
+   - FPA Underground Parking
+   - FPA Round-About Parking
+   - Main Campus Parking
+   - Area logos and names
+   
+   BOOKING FLOW:
+   - Select vehicle -> Select parking area -> Auto-assign spot -> Confirm booking
+   - Vehicle type compatibility checking
+   - Prevents multiple active bookings
+   - Vehicle selection modal with compatibility filtering
+   - Booking confirmation modal
+   - Vehicle type mismatch error handling
+   - Navigation to ActiveParkingScreen after successful booking
+
+1.7 ACTIVE PARKING SCREEN (ActiveParkingScreen)
+   - Three-tab interface: Parking Ticket, Parking Layout, Parking Time
+   
+   PARKING TICKET TAB:
+   - QR Code display (for attendant scanning)
+   - QR code contains: reservation ID, vehicle details, parking area, spot number
+   - Parking details display:
+     * Display Name
+     * Parking Area
+     * Date
+     * Vehicle Details (Brand, Type)
+     * Parking Slot (Number, Type)
+     * Plate Number
+   - "Add to Favorites" button
+   - Status indicator (Waiting for attendant / Active session)
+   
+   PARKING LAYOUT TAB:
+   - Interactive SVG parking layout visualization
+   - Pinch-to-zoom functionality
+   - Pan and scroll support
+   - Clickable parking spots
+   - Highlights user's reserved spot
+   - Spot details modal on tap
+   - Refresh button to reload layout
+   - Empty state if no layout available
+   
+   PARKING TIME TAB:
+   - Circular timer display
+   - Real-time elapsed time tracking
+   - Progress ring animation
+   - Time format: HH:MM:SS
+   - Parking details card:
+     * Vehicle information
+     * Parking Area
+     * Date
+     * Plate Number
+     * Parking Spot
+     * Partial Amount
+   
+   REAL-TIME FEATURES:
+   - Polling for session status updates (every 1 second)
+   - Automatic timer start when attendant scans QR code
+   - Timer syncs with backend start time
+   - Session end detection
+   - Parking end modal with:
+     * Duration
+     * Charge amount (hours deducted)
+     * Remaining balance
+     * Parking area and spot details
+   - Automatic navigation to HomeScreen after session ends
+
+1.8 PROFILE SCREEN (ProfileScreen)
+   - User profile information display
+   - Profile picture with upload/edit functionality
+   - User name and email display
+   - Menu options:
+     * Change Password
+     * Registered Vehicles
+     * Terms & Conditions
+     * Balance
+     * FAQ
+   - Profile picture options:
+     * Take Photo (camera)
+     * Choose from Library
+     * Remove Picture
+   - "How can we help you?" support button
+   - Profile data loading from API
+   - Profile picture caching and refresh
+
+1.9 FAVORITES SCREEN (FavoritesScreen)
+   - List of saved favorite parking spots
+   - Displays for each favorite:
+     * Parking area name
+     * Spot number and type
+     * Location address
+     * Status (Available/Occupied)
+   - "BOOK" button for quick booking
+   - Remove from favorites (trash icon)
+   - Empty state if no favorites
+   - Vehicle selection modal for booking
+   - Vehicle type compatibility checking
+   - Navigation to ActiveParkingScreen after booking
+
+1.10 HISTORY SCREEN (HistoryScreen)
+   - Parking session history
+   - Displays for each session:
+     * Reservation ID
+     * Location name
+     * Scan timestamps (Start/End)
+     * Duration
+     * Hours deducted
+     * Vehicle information (Type, Brand, Plate Number)
+     * Spot number and type
+     * Booking date
+     * Status (Completed/Active/Reserved)
+   - "Add to Favorites" button (heart icon)
+   - "BOOK AGAIN" button for rebooking same spot
+   - Tap card to view detailed reservation information
+   - Reservation details modal with full information
+   - Pagination support
+   - Empty state if no history
+
+1.11 BALANCE SCREEN (BalanceScreen)
+   - User profile display
+   - Debit card-style balance display
+   - Student ID display
+   - Total hours remaining display
+   - "+ ADD HOURS" button (navigates to TopUpScreen)
+   - Transaction history:
+     * Transaction type (Subscription purchase / Parking session)
+     * Amount (hours added or deducted)
+     * Plan name (for subscriptions)
+     * Date and time
+     * Transaction icons
+   - Tap transaction to view details
+   - Transaction details modal with:
+     * Transaction type
+     * Plan name (if applicable)
+     * Amount
+     * Date
+     * Status
+     * Transaction ID
+     * Additional details (location, spot, hours used, etc.)
+   - Empty state if no transactions
+
+1.12 TOP UP SCREEN (TopUpScreen)
+   - User profile display
+   - Subscription plans list
+   - Plan details for each:
+     * Plan name
+     * Description
+     * Cost (in pesos)
+     * Number of hours
+   - Plan selection
+   - Confirmation modal:
+     * Plan details
+     * Total amount
+     * Hours to be added
+   - Purchase confirmation
+   - Success message with:
+     * Hours added
+     * Total hours remaining
+   - Navigation back to BalanceScreen after purchase
+
+1.13 REGISTERED VEHICLES SCREEN (RegisteredVehiclesScreen)
+   - User profile display
+   - Vehicles grouped by type:
+     * Registered Car
+     * Registered Motorcycle
+     * Registered Bike
+   - For each vehicle displays:
+     * Plate Number
+     * Brand
+     * Model
+     * Color
+     * Vehicle type icon
+   - Delete vehicle button (trash icon)
+   - Delete confirmation modal
+   - Horizontal scrollable lists per vehicle type
+   - Scroll indicators for multiple vehicles
+   - "Add Vehicle" button
+   - Empty state if no vehicles
+   - Navigation to AddVehicleScreen
+
+1.14 ADD VEHICLE SCREEN (AddVehicleScreen)
+   - Vehicle registration form
+   - Fields:
+     * Vehicle Type (dropdown: Car, Motorcycle, Bike, E-bike)
+     * Vehicle Color
+     * Plate Number (required)
+     * Vehicle Brand
+     * Vehicle Model
+   - Form validation
+   - "Go Back" button
+   - "+ Add" button
+   - Success alert and navigation to HomeScreen
+   - Animated car image with glow effects
+
+1.15 CHANGE PASSWORD SCREEN (ChangePasswordScreen)
+   - Password change form
+   - Fields:
+     * Current Password
+     * New Password
+     * Confirm Password
+   - Password visibility toggles
+   - Form validation
+   - Password strength requirements
+   - Success/error alerts
+   - Navigation back to ProfileScreen
+
+1.16 TERMS & CONDITIONS SCREEN (TermsAndConditionsScreen)
+   - Terms of service display
+   - Scrollable content
+   - TapPark logo
+   - Back navigation
+
+1.17 FAQ SCREEN (FAQScreen)
+   - Frequently Asked Questions
+   - Expandable/collapsible FAQ items
+   - Questions include:
+     * What is TapPark?
+     * How does TapPark Work?
+     * What are the benefits?
+     * Can I reserve parking in advance?
+     * How does TapPark help with traffic?
+     * What kind of technology does TapPark use?
+     * How will I know if a parking spot is available?
+     * And more...
+   - Back navigation
+
+================================================================================
+                  2. ATTENDANT SCREENS & FUNCTIONALITY
+================================================================================
+
+2.1 DASHBOARD SCREEN (DashboardScreen)
+   - Main attendant interface
+   - Header with:
+     * TapPark logo
+     * Attendant name and profile picture
+     * Activity history icon
+     * Settings icon
+   
+   VEHICLE TYPES SECTION:
+   - Cards for each vehicle type (Car, Motorcycle, Bike)
+   - Displays for each type:
+     * Vehicle type icon
+     * Type name
+     * Total Capacity
+     * Occupied count
+     * Available count
+   - Real-time count updates
+   
+   PARKING SLOTS SECTION:
+   - Grid or List view toggle
+   - Vehicle type filter buttons (All, Car, Motorcycle, Bike)
+   - Slots organized by Section
+   - Each slot displays:
+     * Slot ID
+     * Vehicle Type
+     * Status (Available/Occupied/Reserved)
+     * Status color coding:
+       - Green: Available
+       - Red: Occupied
+       - Yellow: Reserved
+   - Tap slot to view details
+   - Slot details modal with:
+     * Slot ID
+     * Vehicle Type
+     * Status
+     * Section
+     * Parking Area
+     * Address
+   - Real-time polling (every 10 seconds) for status updates
+   - Smooth animations for status changes
+   - Status legend
+   
+   FLOATING ACTION BUTTON:
+   - QR Scanner button (bottom right)
+   - Navigates to QRScannerScreen
+   
+   ACTIVITY HISTORY MODAL:
+   - Scan history table
+   - Columns:
+     * Scan Time
+     * Action (Start/End)
+     * Vehicle (Plate Number)
+     * Parking Area
+     * Spot
+     * Status
+   - Sortable columns
+   - Search/filter functionality
+   - Scrollable table
+   
+   SETTINGS MODAL:
+   - Notification Preferences:
+     * New Reservation Alerts toggle
+   - Account Information:
+     * Attendant ID
+     * Attendant Name
+     * Email
+     * Assigned Area
+   - Admin contact information
+   - Change Password section (Admin only)
+   - Log Out button
+
+2.2 QR SCANNER SCREEN (QRScannerScreen)
+   - Camera view with QR code scanning
+   - Permission handling for camera access
+   - Scanning overlay with frame
+   - Animated scan line
+   - Two scanning modes:
+     * START PARKING: Scan QR to start parking session
+     * END PARKING: Scan QR to end parking session
+   - Status text display
+   - Start Parking button (green)
+   - End Parking button (red)
+   - Timer display (when session active):
+     * Circular progress timer
+     * Elapsed time (HH:MM:SS)
+     * Progress ring animation
+   - Session info display:
+     * Vehicle Plate
+     * Spot Number
+     * Reservation ID
+   - QR code parsing and validation
+   - API integration for:
+     * Starting parking session
+     * Ending parking session
+   - Success/error alerts
+   - Auto-stop scanning after 10 seconds
+   - Close button to return to dashboard
+
+================================================================================
+              3. AUTHENTICATION & ACCOUNT MANAGEMENT
+================================================================================
+
+3.1 AUTHENTICATION FEATURES
+   - User login with email and password
+   - User registration (Signup)
+   - Automatic token storage and management
+   - Token-based API authentication
+   - Session management
+   - Automatic logout on token expiration
+   - Role-based access control:
+     * Subscriber (regular user)
+     * Attendant
+     * Admin
+
+3.2 PROFILE MANAGEMENT
+   - View user profile information
+   - Upload profile picture (camera or library)
+   - Remove profile picture
+   - Profile picture caching
+   - Display user initials if no picture
+   - Profile data refresh
+
+3.3 PASSWORD MANAGEMENT
+   - Change password functionality
+   - Current password verification
+   - New password validation
+   - Password confirmation matching
+
+================================================================================
+                      4. VEHICLE MANAGEMENT
+================================================================================
+
+4.1 VEHICLE REGISTRATION
+   - Add new vehicles
+   - Vehicle types supported:
+     * Car
+     * Motorcycle
+     * Bicycle
+     * E-bike
+   - Required information:
+     * Plate Number (required)
+     * Vehicle Type (required)
+   - Optional information:
+     * Vehicle Color
+     * Vehicle Brand
+     * Vehicle Model
+   - Vehicle validation
+   - Duplicate plate number checking
+
+4.2 VEHICLE DISPLAY
+   - List all registered vehicles
+   - Group by vehicle type
+   - Display vehicle details
+   - Vehicle icons by type
+   - Horizontal scrolling for multiple vehicles
+
+4.3 VEHICLE DELETION
+   - Delete vehicle from account
+   - Confirmation modal
+   - Vehicle details display in confirmation
+
+4.4 VEHICLE SELECTION FOR BOOKING
+   - Vehicle selection modal
+   - Filter by compatibility with parking spot type
+   - Visual vehicle cards
+   - Selected vehicle highlighting
+   - Vehicle type mismatch detection
+
+================================================================================
+                 5. PARKING BOOKING & MANAGEMENT
+================================================================================
+
+5.1 PARKING AREA SELECTION
+   - List of available parking areas
+   - Area information:
+     * Name
+     * Location/Address
+     * Logo (FPA/FU)
+   - Area selection for booking
+
+5.2 PARKING SPOT SELECTION
+   - Available spots for selected area
+   - Filter by vehicle type compatibility
+   - Automatic spot assignment
+   - Spot information:
+     * Spot Number
+     * Spot Type
+     * Status
+     * Section
+
+5.3 BOOKING PROCESS
+   - Select vehicle
+   - Select parking area
+   - Automatic spot assignment
+   - Booking confirmation
+   - QR code generation
+   - Reservation creation
+   - Prevents multiple active bookings
+   - Vehicle type compatibility validation
+   - Error handling for:
+     * No available spots
+     * Vehicle type mismatch
+     * Already have active booking
+
+5.4 ACTIVE PARKING SESSION
+   - Real-time session tracking
+   - QR code display for attendant scanning
+   - Parking details display
+   - Interactive parking layout
+   - Timer tracking
+   - Session status polling
+   - Automatic session end detection
+   - Session end summary
+
+5.5 PARKING LAYOUT
+   - SVG-based parking layout visualization
+   - Interactive zoom and pan
+   - Clickable parking spots
+   - User's spot highlighting
+   - Spot details on tap
+   - Layout refresh functionality
+
+5.6 FREQUENT SPOTS
+   - Tracks frequently used parking spots
+   - Displays usage count
+   - Quick booking from frequent spots
+   - Location and spot information
+   - Availability status
+
+5.7 FAVORITES
+   - Save favorite parking spots
+   - Quick access to favorite spots
+   - Book from favorites
+   - Remove from favorites
+   - Favorite spot information display
+
+5.8 PARKING HISTORY
+   - Complete parking session history
+   - Session details:
+     * Reservation ID
+     * Location
+     * Start/End times
+     * Duration
+     * Hours deducted
+     * Vehicle information
+     * Spot information
+     * Status
+   - Rebook from history
+   - Add to favorites from history
+   - Detailed reservation view
+   - Pagination support
+
+================================================================================
+              6. PAYMENT & SUBSCRIPTION FEATURES
+================================================================================
+
+6.1 BALANCE MANAGEMENT
+   - View current hour balance
+   - Student ID display
+   - Debit card-style display
+   - Transaction history
+   - Transaction details view
+
+6.2 SUBSCRIPTION PLANS
+   - View available subscription plans
+   - Plan details:
+     * Plan name
+     * Cost (pesos)
+     * Number of hours
+     * Description
+   - Plan selection
+   - Purchase confirmation
+
+6.3 TOP UP FUNCTIONALITY
+   - Purchase subscription plans
+   - Add hours to account
+   - Payment processing
+   - Balance update after purchase
+   - Transaction recording
+
+6.4 TRANSACTION HISTORY
+   - View all transactions
+   - Transaction types:
+     * Subscription purchases (hours added)
+     * Parking sessions (hours deducted)
+   - Transaction details:
+     * Type
+     * Amount (hours)
+     * Date and time
+     * Status
+     * Transaction ID
+     * Additional details
+   - Transaction filtering
+   - Pagination support
+
+6.5 HOUR DEDUCTION
+   - Automatic hour deduction on parking session end
+   - Hour-based charging (rounded up to hours)
+   - Balance update after deduction
+   - Transaction recording
+
+================================================================================
+                     7. ADDITIONAL FEATURES
+================================================================================
+
+7.1 NAVIGATION & DRAWER
+   - Side drawer navigation
+   - Menu items:
+     * Home
+     * Profile
+     * Favorites
+     * Active Parking
+     * History
+   - Drawer open/close animations
+   - Active route highlighting
+
+7.2 THEME SUPPORT
+   - Dark mode support
+   - Light mode support
+   - Theme switching
+   - Consistent color scheme
+
+7.3 RESPONSIVE DESIGN
+   - Adaptive layouts for different screen sizes
+   - Support for:
+     * Small screens (< 375px)
+     * Medium screens (375-414px)
+     * Large screens (414-768px)
+     * Tablets (768-1024px)
+     * Large tablets (> 1024px)
+   - Landscape orientation support
+   - Responsive fonts, spacing, and sizing
+
+7.4 LOADING STATES
+   - Global loading spinner
+   - Screen-specific loading indicators
+   - Loading messages
+   - Skeleton screens for better UX
+
+7.5 ERROR HANDLING
+   - Network error handling
+   - API error messages
+   - User-friendly error alerts
+   - Retry mechanisms
+   - Offline detection
+
+7.6 REAL-TIME UPDATES
+   - Polling for parking slot status (attendant)
+   - Polling for session status (user)
+   - Real-time timer updates
+   - Status change animations
+
+7.7 QR CODE FUNCTIONALITY
+   - QR code generation for reservations
+   - QR code scanning (attendant)
+   - QR code validation
+   - QR code data parsing
+
+7.8 NOTIFICATIONS (Attendant)
+   - New reservation alerts toggle
+   - In-app notification settings
+   - Notification preferences management
+
+7.9 ACTIVITY TRACKING (Attendant)
+   - Scan history tracking
+   - Activity records:
+     * Scan time
+     * Action type (Start/End)
+     * Vehicle information
+     * Parking area and spot
+     * Status
+   - Activity history table
+   - Search and filter capabilities
+
+7.10 SETTINGS (Attendant)
+   - Profile information display
+   - Notification preferences
+   - Account information
+   - Logout functionality
+   - Admin contact information
+
+================================================================================
+                        TECHNICAL FEATURES
+================================================================================
+
+8.1 API INTEGRATION
+   - RESTful API communication
+   - Token-based authentication
+   - Request timeout handling
+   - Error response handling
+   - Network error detection
+   - Automatic token refresh
+
+8.2 DATA PERSISTENCE
+   - AsyncStorage for token storage
+   - Profile data caching
+   - Image caching
+   - Offline data handling
+
+8.3 STATE MANAGEMENT
+   - Context API for:
+     * Authentication state
+     * Theme state
+     * Loading state
+     * Drawer state
+   - Local component state
+   - Real-time state updates
+
+8.4 IMAGE HANDLING
+   - Profile picture upload
+   - Image caching
+   - Image error handling
+   - Fallback to initials
+   - Image optimization
+
+8.5 ANIMATIONS
+   - Loading animations
+   - Status change animations
+   - Scroll progress indicators
+   - Modal animations
+   - Page transitions
+
+================================================================================
+                        USER FLOWS
+================================================================================
+
+9.1 NEW USER FLOW
+   1. Launch app -> Splash Screen
+   2. Greetings Screen
+   3. Signup Screen (register account)
+   4. About Screen (app introduction)
+   5. Add Vehicle Screen (register first vehicle)
+   6. Home Screen (main interface)
+
+9.2 EXISTING USER FLOW
+   1. Launch app -> Splash Screen
+   2. Login Screen (authenticate)
+   3. Home Screen (or AboutScreen if no vehicles)
+
+9.3 PARKING BOOKING FLOW
+   1. Home Screen -> Select vehicle
+   2. Select parking area
+   3. Automatic spot assignment
+   4. Booking confirmation
+   5. Active Parking Screen
+   6. Attendant scans QR code (starts session)
+   7. Timer starts
+   8. Attendant scans QR code again (ends session)
+   9. Session end summary
+   10. Return to Home Screen
+
+9.4 ATTENDANT FLOW
+   1. Login as Attendant
+   2. Dashboard Screen (view parking slots)
+   3. QR Scanner Screen (scan user QR codes)
+   4. Start/End parking sessions
+   5. View activity history
+   6. Manage settings
+
+================================================================================
+                        KEY FEATURES SUMMARY
+================================================================================
+
+USER FEATURES:
+✓ User registration and login
+✓ Vehicle registration and management
+✓ Parking spot booking
+✓ Real-time parking session tracking
+✓ Interactive parking layout visualization
+✓ Favorite spots management
+✓ Parking history viewing
+✓ Balance and subscription management
+✓ Profile management
+✓ QR code generation for reservations
+
+ATTENDANT FEATURES:
+✓ Parking slot dashboard with real-time updates
+✓ QR code scanning for start/end sessions
+✓ Activity history tracking
+✓ Notification settings
+✓ Profile management
+✓ Grid and list view modes
+✓ Vehicle type filtering
+✓ Slot status monitoring
+
+================================================================================
+                        END OF DOCUMENTATION
+================================================================================
+
+
+
+
+
+
+

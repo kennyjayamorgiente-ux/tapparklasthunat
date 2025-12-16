@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
 const { authenticateToken, adminOnly } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 const router = express.Router();
 
@@ -77,6 +78,14 @@ router.patch('/notifications/:id/read', authenticateToken, async (req, res) => {
       });
     }
 
+    // Log notification read
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.NOTIFICATION_READ,
+      `Notification marked as read`,
+      parseInt(id)
+    );
+
     res.json({
       success: true,
       message: 'Notification marked as read'
@@ -94,10 +103,19 @@ router.patch('/notifications/:id/read', authenticateToken, async (req, res) => {
 // Mark all notifications as read
 router.patch('/notifications/read-all', authenticateToken, async (req, res) => {
   try {
-    await db.query(
+    const result = await db.query(
       'UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE',
       [req.user.user_id]
     );
+
+    // Log all notifications read
+    if (result.affectedRows > 0) {
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.NOTIFICATION_READ_ALL,
+        `Marked ${result.affectedRows} notifications as read`
+      );
+    }
 
     res.json({
       success: true,
@@ -129,6 +147,14 @@ router.delete('/notifications/:id', authenticateToken, async (req, res) => {
         message: 'Notification not found'
       });
     }
+
+    // Log notification deletion
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.NOTIFICATION_DELETE,
+      `Notification deleted`,
+      parseInt(id)
+    );
 
     res.json({
       success: true,

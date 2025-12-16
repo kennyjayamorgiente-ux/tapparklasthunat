@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
 const { authenticateToken, checkBalance } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 const router = express.Router();
 
@@ -152,6 +153,22 @@ router.post('/topup', authenticateToken, topUpValidation, async (req, res) => {
       'SELECT balance FROM users WHERE id = ?',
       [req.user.user_id]
     );
+
+    // Get payment ID for logging
+    const paymentRecord = await db.query(
+      'SELECT payment_id FROM payments WHERE transaction_id = ? ORDER BY payment_id DESC LIMIT 1',
+      [transactionId]
+    );
+
+    // Log payment topup
+    if (paymentRecord.length > 0) {
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.PAYMENT_TOPUP,
+        `Wallet topped up: ₱${amount} via ${paymentMethod}`,
+        paymentRecord[0].payment_id
+      );
+    }
 
     res.json({
       success: true,

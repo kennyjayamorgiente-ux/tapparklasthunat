@@ -671,6 +671,22 @@ export class ApiService {
     }>(url);
   }
 
+  static async getParkingSpotsStatus(areaId: number) {
+    return this.request<{
+      success: boolean;
+      data: {
+        spots: Array<{
+          id: number;
+          spot_number: string;
+          status: string;
+          spot_type: string;
+          section_name: string;
+          is_user_booked?: boolean | number; // Indicates if current user has booked this spot
+        }>;
+      };
+    }>(`/parking-areas/areas/${areaId}/spots-status`);
+  }
+
   static async bookParkingSpot(vehicleId: number, spotId: number, areaId: number) {
     return this.request<{
       success: boolean;
@@ -1236,9 +1252,11 @@ export class ApiService {
         areaId: number;
         areaName: string;
         location: string;
+        layoutId: number | null;
         layoutName: string;
         layoutSvg: string;
         hasLayout: boolean;
+        floor?: number;
       };
     }>(`/parking-areas/area/${areaId}/layout?t=${timestamp}`);
   }

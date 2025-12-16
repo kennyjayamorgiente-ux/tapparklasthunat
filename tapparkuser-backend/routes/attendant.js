@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 // Get vehicle types with occupied, vacant, and total capacity
 router.get('/vehicle-types', authenticateToken, async (req, res) => {
@@ -395,12 +396,14 @@ router.post('/start-parking-session', authenticateToken, async (req, res) => {
         v.plate_number,
         ps.spot_number,
         pa.parking_area_name,
-        pa.location
+        pa.location,
+        CONCAT(u.first_name, ' ', u.last_name) as user_name
       FROM reservations r
       JOIN vehicles v ON r.vehicle_id = v.vehicle_id
       JOIN parking_spot ps ON r.parking_spots_id = ps.parking_spot_id
       JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
       JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      JOIN users u ON r.user_id = u.user_id
       WHERE r.reservation_id = ? AND r.booking_status = 'reserved'
     `, [reservationId]);
 
@@ -436,7 +439,37 @@ router.post('/start-parking-session', authenticateToken, async (req, res) => {
 
     const actualStartTime = updatedReservation[0]?.start_time || new Date().toISOString();
 
+    // Insert into qr_scan_tracking table
+    await db.query(`
+      INSERT INTO qr_scan_tracking (
+        reservation_id,
+        attendant_user_id,
+        vehicle_plate,
+        parking_area_name,
+        spot_number,
+        scan_type,
+        scan_timestamp,
+        status_at_scan
+      ) VALUES (?, ?, ?, ?, ?, 'start', NOW(), ?)
+    `, [
+      reservationData.reservation_id,
+      req.user.user_id, // The attendant who scanned
+      reservationData.plate_number, // Vehicle plate number
+      reservationData.parking_area_name,
+      reservationData.spot_number,
+      'active' // Status at scan
+    ]);
+
     console.log(`✅ Parking session started for reservation ${reservationData.reservation_id} at ${actualStartTime}`);
+    console.log(`📝 Attendant log recorded: Staff ${req.user.user_id} scanned START for ${reservationData.user_name}`);
+
+    // Log parking start from user's perspective
+    await logUserActivity(
+      reservationData.user_id,
+      ActionTypes.PARKING_START,
+      `Parking session started by attendant: Spot ${reservationData.spot_number} at ${reservationData.parking_area_name}`,
+      reservationData.reservation_id
+    );
 
     res.json({
       success: true,
@@ -492,12 +525,14 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
         v.plate_number,
         ps.spot_number,
         pa.parking_area_name,
-        pa.location
+        pa.location,
+        CONCAT(u.first_name, ' ', u.last_name) as user_name
       FROM reservations r
       JOIN vehicles v ON r.vehicle_id = v.vehicle_id
       JOIN parking_spot ps ON r.parking_spots_id = ps.parking_spot_id
       JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
       JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      JOIN users u ON r.user_id = u.user_id
       WHERE r.reservation_id = ? AND r.booking_status = 'active'
     `, [reservationId]);
 
@@ -576,7 +611,30 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
           WHERE subscription_id = ?
         `,
         params: [hoursToDeduct, hoursToDeduct, activeSubscription[0].subscription_id]
-      }] : [])
+      }] : []),
+      // Insert into qr_scan_tracking table
+      {
+        sql: `
+          INSERT INTO qr_scan_tracking (
+            reservation_id,
+            attendant_user_id,
+            vehicle_plate,
+            parking_area_name,
+            spot_number,
+            scan_type,
+            scan_timestamp,
+            status_at_scan
+          ) VALUES (?, ?, ?, ?, ?, 'end', NOW(), ?)
+        `,
+        params: [
+          reservationData.reservation_id,
+          req.user.user_id, // The attendant who scanned
+          reservationData.plate_number, // Vehicle plate number
+          reservationData.parking_area_name,
+          reservationData.spot_number,
+          'completed' // Status at scan
+        ]
+      }
     ]);
 
     // Verify the deduction by getting updated balance (include all active subscriptions, even if hours_remaining is 0)
@@ -590,6 +648,15 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
     const verifiedBalanceHours = updatedSubscriptionHours[0]?.total_hours_remaining || 0;
     
     console.log(`✅ Parking session ended - Deducted ${hoursToDeduct} hours. Balance: ${balanceHours} -> ${verifiedBalanceHours}`);
+    console.log(`📝 Attendant log recorded: Staff ${req.user.user_id} scanned END for ${reservationData.user_name}`);
+
+    // Log parking end from user's perspective
+    await logUserActivity(
+      reservationData.user_id,
+      ActionTypes.PARKING_END,
+      `Parking session ended by attendant: Spot ${reservationData.spot_number} at ${reservationData.parking_area_name}. Duration: ${durationHours} hours, ${hoursToDeduct} hours deducted`,
+      reservationData.reservation_id
+    );
 
     console.log(`✅ Parking session ended for reservation ${reservationData.reservation_id}`);
 
@@ -781,61 +848,35 @@ router.get('/parking-session-status-qr/:qrCode', authenticateToken, async (req, 
 // Get parking scan history for attendants
 router.get('/scan-history', authenticateToken, async (req, res) => {
   try {
-    console.log('📊 Fetching parking scan history...');
+    console.log('📊 Fetching parking scan history from qr_scan_tracking...');
 
-    // Get all reservations with their scan timestamps
+    // Get all QR scan tracking records with additional details
     const scanHistory = await db.query(`
       SELECT 
-        CONCAT('scan_', r.reservation_id, '_start') as id,
-        r.reservation_id,
-        v.plate_number as vehiclePlate,
+        CONCAT('qr_', qst.qr_id) as id,
+        qst.reservation_id as reservationId,
+        qst.vehicle_plate as vehiclePlate,
         v.vehicle_type as vehicleType,
         v.brand as vehicleBrand,
-        pa.parking_area_name as parkingArea,
-        ps.spot_number as parkingSlot,
-        'start' as scanType,
-        r.start_time as scanTime,
-        CONCAT(u.first_name, ' ', u.last_name) as attendantName,
-        t.account_type_name as userType,
-        r.booking_status as status
-      FROM reservations r
-      JOIN vehicles v ON r.vehicle_id = v.vehicle_id
-      JOIN parking_spot ps ON r.parking_spots_id = ps.parking_spot_id
-      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
-      JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
-      JOIN users u ON r.user_id = u.user_id
-      JOIN types t ON u.user_type_id = t.type_id
-      WHERE r.start_time IS NOT NULL
+        qst.parking_area_name as parkingArea,
+        qst.spot_number as parkingSlot,
+        qst.scan_type as scanType,
+        qst.scan_timestamp as scanTime,
+        CONCAT(staff.first_name, ' ', staff.last_name) as attendantName,
+        staff_type.account_type_name as userType,
+        qst.status_at_scan as status
+      FROM qr_scan_tracking qst
+      LEFT JOIN users staff ON qst.attendant_user_id = staff.user_id
+      LEFT JOIN types staff_type ON staff.user_type_id = staff_type.type_id
+      LEFT JOIN reservations r ON qst.reservation_id = r.reservation_id
+      LEFT JOIN vehicles v ON r.vehicle_id = v.vehicle_id
+      WHERE qst.attendant_user_id IS NOT NULL
       
-      UNION ALL
-      
-      SELECT 
-        CONCAT('scan_', r.reservation_id, '_end') as id,
-        r.reservation_id,
-        v.plate_number as vehiclePlate,
-        v.vehicle_type as vehicleType,
-        v.brand as vehicleBrand,
-        pa.parking_area_name as parkingArea,
-        ps.spot_number as parkingSlot,
-        'end' as scanType,
-        r.end_time as scanTime,
-        CONCAT(u.first_name, ' ', u.last_name) as attendantName,
-        t.account_type_name as userType,
-        r.booking_status as status
-      FROM reservations r
-      JOIN vehicles v ON r.vehicle_id = v.vehicle_id
-      JOIN parking_spot ps ON r.parking_spots_id = ps.parking_spot_id
-      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
-      JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
-      JOIN users u ON r.user_id = u.user_id
-      JOIN types t ON u.user_type_id = t.type_id
-      WHERE r.end_time IS NOT NULL
-      
-      ORDER BY scanTime DESC
+      ORDER BY qst.scan_timestamp DESC
       LIMIT 100
     `);
 
-    console.log(`✅ Found ${scanHistory.length} scan records`);
+    console.log(`✅ Found ${scanHistory.length} scan records from qr_scan_tracking`);
 
     res.json({
       success: true,

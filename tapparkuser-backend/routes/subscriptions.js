@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
@@ -92,6 +93,22 @@ router.post('/purchase', authenticateToken, [
       FROM subscriptions s
       WHERE s.user_id = ? AND s.status = 'active'
     `, [req.user.user_id]);
+
+    // Get subscription ID for logging
+    const subscriptionRecord = await db.query(
+      'SELECT subscription_id FROM subscriptions WHERE user_id = ? ORDER BY subscription_id DESC LIMIT 1',
+      [req.user.user_id]
+    );
+
+    // Log subscription purchase
+    if (subscriptionRecord.length > 0) {
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.SUBSCRIPTION_PURCHASE,
+        `Subscription purchased: ${plan.plan_name} - ${plan.number_of_hours} hours for ₱${plan.cost}`,
+        subscriptionRecord[0].subscription_id
+      );
+    }
 
     res.json({
       success: true,

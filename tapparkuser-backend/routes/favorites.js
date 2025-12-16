@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 const router = express.Router();
 
@@ -83,6 +84,25 @@ router.post('/:parkingSpotId', authenticateToken, async (req, res) => {
       [req.user.user_id, parkingSpotId]
     );
 
+    // Get spot details for logging
+    const spotDetails = await db.query(`
+      SELECT ps.spot_number, pa.parking_area_name
+      FROM parking_spot ps
+      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+      JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      WHERE ps.parking_spot_id = ?
+    `, [parkingSpotId]);
+
+    // Log favorite addition
+    if (spotDetails.length > 0) {
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.FAVORITE_ADD,
+        `Added to favorites: Spot ${spotDetails[0].spot_number} at ${spotDetails[0].parking_area_name}`,
+        parseInt(parkingSpotId)
+      );
+    }
+
     res.status(201).json({
       success: true,
       message: 'Parking spot added to favorites'
@@ -115,11 +135,30 @@ router.delete('/:parkingSpotId', authenticateToken, async (req, res) => {
       });
     }
 
+    // Get spot details before deletion for logging
+    const spotDetails = await db.query(`
+      SELECT ps.spot_number, pa.parking_area_name
+      FROM parking_spot ps
+      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+      JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      WHERE ps.parking_spot_id = ?
+    `, [parkingSpotId]);
+
     // Remove from favorites
     await db.query(
       'DELETE FROM favorites WHERE user_id = ? AND parking_spot_id = ?',
       [req.user.user_id, parkingSpotId]
     );
+
+    // Log favorite removal
+    if (spotDetails.length > 0) {
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.FAVORITE_REMOVE,
+        `Removed from favorites: Spot ${spotDetails[0].spot_number} at ${spotDetails[0].parking_area_name}`,
+        parseInt(parkingSpotId)
+      );
+    }
 
     res.json({
       success: true,

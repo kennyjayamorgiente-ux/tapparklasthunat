@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 const router = express.Router();
 
@@ -95,6 +96,58 @@ router.get('/areas/:areaId/spots', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch parking spots'
+    });
+  }
+});
+
+// Get all parking spots with statuses for layout visualization
+router.get('/areas/:areaId/spots-status', authenticateToken, async (req, res) => {
+  try {
+    const { areaId } = req.params;
+    const userId = req.user.user_id;
+    
+    console.log(`📊 Getting all spot statuses for area ${areaId} (for layout visualization)`);
+
+    // Query to get all spots with their statuses, and check if current user has booked each spot
+    const query = `
+      SELECT 
+        ps.parking_spot_id as id,
+        ps.spot_number,
+        ps.status,
+        ps.spot_type,
+        psec.section_name,
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 
+            FROM reservations r 
+            WHERE r.parking_spots_id = ps.parking_spot_id 
+            AND r.user_id = ?
+            AND r.booking_status IN ('reserved', 'active')
+          ) THEN 1
+          ELSE 0
+        END as is_user_booked
+      FROM parking_spot ps
+      JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+      WHERE psec.parking_area_id = ?
+      ORDER BY ps.spot_number
+    `;
+
+    const spots = await db.query(query, [userId, areaId]);
+    
+    console.log(`📋 Found ${spots.length} spots with statuses`);
+
+    res.json({
+      success: true,
+      data: {
+        spots
+      }
+    });
+
+  } catch (error) {
+    console.error('Get parking spots status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch parking spots status'
     });
   }
 });
@@ -262,6 +315,14 @@ router.post('/book', authenticateToken, async (req, res) => {
       [qrCodeDataURL, reservationId]
     );
 
+    // Log parking booking
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.PARKING_BOOK,
+      `Parking spot booked: ${spotDetails[0].spot_number} at ${areaDetails[0].parking_area_name} for vehicle ${vehicleDetails[0].plate_number}`,
+      reservationId
+    );
+
     res.json({
       success: true,
       data: {
@@ -306,6 +367,7 @@ router.get('/area/:areaId/layout', authenticateToken, async (req, res) => {
         pa.parking_area_id,
         pa.parking_area_name,
         pa.location,
+        pl.parking_layout_id,
         pl.layout_data,
         pl.floor
       FROM parking_area pa
@@ -433,6 +495,7 @@ router.get('/area/:areaId/layout', authenticateToken, async (req, res) => {
         areaId: area.parking_area_id,
         areaName: area.parking_area_name,
         location: area.location,
+        layoutId: area.parking_layout_id || null,
         layoutName: `${area.parking_area_name}_floor_${area.floor || 1}`,
         layoutSvg: layoutSvg,
         hasLayout: hasLayout,

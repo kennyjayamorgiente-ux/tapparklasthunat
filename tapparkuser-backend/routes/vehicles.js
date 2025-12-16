@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 const router = express.Router();
 
@@ -112,6 +113,14 @@ router.post('/', authenticateToken, vehicleValidation, async (req, res) => {
       [result.insertId]
     );
 
+    // Log vehicle creation
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.VEHICLE_CREATE,
+      `Vehicle added: ${plateNumber} (${vehicleType})`,
+      result.insertId
+    );
+
     res.status(201).json({
       success: true,
       message: 'Vehicle added successfully',
@@ -183,6 +192,15 @@ router.put('/:id', authenticateToken, vehicleValidation, async (req, res) => {
       [id]
     );
 
+    // Log vehicle update
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.VEHICLE_UPDATE,
+      `Vehicle updated: ${plateNumber} (${vehicleType})`,
+      parseInt(id),
+      'plate_number, vehicle_type, brand, color'
+    );
+
     res.json({
       success: true,
       message: 'Vehicle updated successfully',
@@ -231,13 +249,27 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       });
     }
 
+    // Get vehicle info before deletion for logging
+    const vehicleInfo = await db.query(
+      'SELECT plate_number, vehicle_type FROM vehicles WHERE vehicle_id = ?',
+      [id]
+    );
+
     // Delete vehicle
     await db.query(
       'DELETE FROM vehicles WHERE vehicle_id = ? AND user_id = ?',
       [id, req.user.user_id]
     );
 
-    // Vehicle deleted successfully
+    // Log vehicle deletion
+    if (vehicleInfo.length > 0) {
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.VEHICLE_DELETE,
+        `Vehicle deleted: ${vehicleInfo[0].plate_number} (${vehicleInfo[0].vehicle_type})`,
+        parseInt(id)
+      );
+    }
 
     res.json({
       success: true,

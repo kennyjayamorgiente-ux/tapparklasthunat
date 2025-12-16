@@ -26,6 +26,49 @@ import ApiService from '../../services/api';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+// Enhanced responsive calculations
+const isSmallScreen = screenWidth < 375;
+const isMediumScreen = screenWidth >= 375 && screenWidth < 414;
+const isLargeScreen = screenWidth >= 414 && screenWidth < 768;
+const isTablet = screenWidth >= 768 && screenWidth < 1024;
+const isLargeTablet = screenWidth >= 1024;
+
+const getResponsiveFontSize = (baseSize: number): number => {
+  if (isSmallScreen) return baseSize * 0.85;
+  if (isMediumScreen) return baseSize * 0.95;
+  if (isLargeScreen) return baseSize;
+  if (isTablet) return baseSize * 1.1;
+  if (isLargeTablet) return baseSize * 1.2;
+  return baseSize;
+};
+
+const getResponsiveSize = (baseSize: number): number => {
+  if (isSmallScreen) return baseSize * 0.8;
+  if (isMediumScreen) return baseSize * 0.9;
+  if (isLargeScreen) return baseSize;
+  if (isTablet) return baseSize * 1.05;
+  if (isLargeTablet) return baseSize * 1.1;
+  return baseSize;
+};
+
+const getResponsivePadding = (basePadding: number): number => {
+  if (isSmallScreen) return basePadding * 0.8;
+  if (isMediumScreen) return basePadding * 0.9;
+  if (isLargeScreen) return basePadding;
+  if (isTablet) return basePadding * 1.1;
+  if (isLargeTablet) return basePadding * 1.2;
+  return basePadding;
+};
+
+const getResponsiveMargin = (baseMargin: number): number => {
+  if (isSmallScreen) return baseMargin * 0.8;
+  if (isMediumScreen) return baseMargin * 0.9;
+  if (isLargeScreen) return baseMargin;
+  if (isTablet) return baseMargin * 1.1;
+  if (isLargeTablet) return baseMargin * 1.2;
+  return baseMargin;
+};
+
 const ActiveParkingScreen: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -42,6 +85,30 @@ const ActiveParkingScreen: React.FC = () => {
   // SVG Layout state
   const [svgContent, setSvgContent] = useState<string>('');
   const [isLoadingSvg, setIsLoadingSvg] = useState(false);
+  const [layoutId, setLayoutId] = useState<number | null>(null);
+  
+  // Clickable spots from SVG
+  const [clickableSpots, setClickableSpots] = useState<Array<{
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    spotNumber?: string;
+    spotId?: string;
+  }>>([]);
+  const [selectedSpot, setSelectedSpot] = useState<any>(null);
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  
+  // Spot statuses from backend (matched by spot_number)
+  const [spotStatuses, setSpotStatuses] = useState<Map<string, {
+    id: number;
+    spot_number: string;
+    status: string;
+    spot_type: string;
+    section_name: string;
+    is_user_booked?: boolean | number; // Indicates if current user has booked this spot
+  }>>(new Map());
   
   // Zoom state for SVG - using regular state for simplicity
   const [scale, setScale] = React.useState(1);
@@ -89,6 +156,540 @@ const ActiveParkingScreen: React.FC = () => {
   };
 
 
+  // Parse SVG to extract clickable elements
+  const parseSvgForClickableElements = (svgString: string) => {
+    const spots: Array<{
+      id: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      spotNumber?: string;
+      spotId?: string;
+    }> = [];
+    
+    try {
+      // Extract viewBox to calculate relative positions
+      const viewBoxMatch = svgString.match(/viewBox=["']([^"']+)["']/);
+      let viewBox = { x: 0, y: 0, width: 276, height: 322 }; // Default
+      if (viewBoxMatch) {
+        const parts = viewBoxMatch[1].trim().split(/[\s,]+/).filter(p => p).map(Number);
+        if (parts.length >= 4) {
+          viewBox = { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
+        }
+      }
+      
+      // Also try to get width/height attributes
+      const widthMatch = svgString.match(/width=["']([^"']+)["']/);
+      const heightMatch = svgString.match(/height=["']([^"']+)["']/);
+      if (widthMatch && heightMatch) {
+        const w = parseFloat(widthMatch[1]);
+        const h = parseFloat(heightMatch[1]);
+        if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+          viewBox.width = w;
+          viewBox.height = h;
+        }
+      }
+      
+      // Find all elements with IDs (likely parking spots)
+      const idRegex = /<(\w+)[^>]*\sid=["']([^"']+)["'][^>]*>/g;
+      let match;
+      
+      while ((match = idRegex.exec(svgString)) !== null) {
+        const elementType = match[1];
+        const id = match[2];
+        const fullElement = match[0];
+        const matchIndex = match.index;
+        
+        // Skip elements with "element" in their ID - these are not parking spots
+        const idLower = id.toLowerCase();
+        if (idLower.includes('element')) {
+          console.log(`🚫 Skipping element (not a parking spot): ${id}`);
+          continue;
+        }
+        
+        // Check if this element is inside a road group (handle nested groups)
+        const beforeMatch = svgString.substring(0, matchIndex);
+        let isInRoadGroup = false;
+        let accumulatedTransform: { x: number; y: number } = { x: 0, y: 0 };
+        
+        // Find all parent groups and check for road groups, also accumulate transforms
+        let searchPos = matchIndex;
+        const parentGroups: Array<{ tag: string; index: number }> = [];
+        
+        while (searchPos >= 0) {
+          const lastGroupOpen = beforeMatch.lastIndexOf('<g', searchPos);
+          const lastGroupClose = beforeMatch.lastIndexOf('</g>', searchPos);
+          
+          if (lastGroupOpen > lastGroupClose && lastGroupOpen >= 0) {
+            const groupTagStart = lastGroupOpen;
+            const groupTagEnd = beforeMatch.indexOf('>', groupTagStart) + 1;
+            if (groupTagEnd > groupTagStart) {
+              const groupTag = beforeMatch.substring(groupTagStart, groupTagEnd);
+              parentGroups.push({ tag: groupTag, index: groupTagStart });
+              
+              // Check if this group is a road group
+              const groupIdMatch = groupTag.match(/id=["']([^"']+)["']/i);
+              const groupClassMatch = groupTag.match(/class=["']([^"']+)["']/i);
+              
+              if (groupIdMatch && groupIdMatch[1].toLowerCase().includes('road')) {
+                isInRoadGroup = true;
+                break;
+              }
+              if (groupClassMatch && groupClassMatch[1].toLowerCase().includes('road')) {
+                isInRoadGroup = true;
+                break;
+              }
+              
+              // Accumulate transform from parent groups (for nested floors/sections)
+              const transformMatch = groupTag.match(/transform=["']translate\(([^)]+)\)["']/);
+              if (transformMatch) {
+                const coords = transformMatch[1].split(/[,\s]+/).map(parseFloat);
+                accumulatedTransform.x += coords[0] || 0;
+                accumulatedTransform.y += coords[1] || 0;
+              }
+              
+              searchPos = lastGroupOpen - 1;
+            } else {
+              break;
+            }
+          } else {
+            break;
+          }
+        }
+        
+        // Skip road elements - check if ID or class contains "road" (case-insensitive)
+        const classMatch = fullElement.match(/class=["']([^"']+)["']/i);
+        const classLower = classMatch ? classMatch[1].toLowerCase() : '';
+        
+        if (idLower.includes('road') || classLower.includes('road') || isInRoadGroup) {
+          console.log(`🚫 Skipping road element: ${id}${isInRoadGroup ? ' (in road group)' : ''}`);
+          continue;
+        }
+        
+        // Extract coordinates based on element type
+        let x = 0, y = 0, width = 0, height = 0;
+        
+        if (elementType === 'rect') {
+          const xMatch = fullElement.match(/x=["']([^"']+)["']/);
+          const yMatch = fullElement.match(/y=["']([^"']+)["']/);
+          const widthMatch = fullElement.match(/width=["']([^"']+)["']/);
+          const heightMatch = fullElement.match(/height=["']([^"']+)["']/);
+          
+          x = xMatch ? parseFloat(xMatch[1]) : 0;
+          y = yMatch ? parseFloat(yMatch[1]) : 0;
+          width = widthMatch ? parseFloat(widthMatch[1]) : 40;
+          height = heightMatch ? parseFloat(heightMatch[1]) : 20;
+        } else if (elementType === 'circle') {
+          const cxMatch = fullElement.match(/cx=["']([^"']+)["']/);
+          const cyMatch = fullElement.match(/cy=["']([^"']+)["']/);
+          const rMatch = fullElement.match(/r=["']([^"']+)["']/);
+          
+          const cx = cxMatch ? parseFloat(cxMatch[1]) : 0;
+          const cy = cyMatch ? parseFloat(cyMatch[1]) : 0;
+          const r = rMatch ? parseFloat(rMatch[1]) : 10;
+          
+          x = cx - r;
+          y = cy - r;
+          width = r * 2;
+          height = r * 2;
+        } else if (elementType === 'g') {
+          // For groups, find the complete group element and its children
+          // Find the matching closing </g> tag
+          let depth = 1;
+          let pos = matchIndex + fullElement.length;
+          let groupEnd = -1;
+          
+          while (pos < svgString.length && depth > 0) {
+            const nextOpen = svgString.indexOf('<g', pos);
+            const nextClose = svgString.indexOf('</g>', pos);
+            
+            if (nextClose === -1) break;
+            
+            if (nextOpen !== -1 && nextOpen < nextClose) {
+              depth++;
+              pos = nextOpen + 2;
+            } else {
+              depth--;
+              if (depth === 0) {
+                groupEnd = nextClose + 4;
+                break;
+              }
+              pos = nextClose + 4;
+            }
+          }
+          
+          if (groupEnd === -1) {
+            // Couldn't find closing tag, skip
+            continue;
+          }
+          
+          const groupContent = svgString.substring(matchIndex, groupEnd);
+          
+          // Check for transform on the group and combine with accumulated parent transforms
+          const transformMatch = fullElement.match(/transform=["']translate\(([^)]+)\)["']/);
+          let tx = accumulatedTransform.x;
+          let ty = accumulatedTransform.y;
+          if (transformMatch) {
+            const coords = transformMatch[1].split(/[,\s]+/).map(parseFloat);
+            tx += coords[0] || 0;
+            ty += coords[1] || 0;
+          }
+          
+          // Look for rect elements inside the group - find the largest one (likely the main parking spot)
+          // Also handle nested groups within this group (for sections/floors)
+          type RectInfo = { x: number; y: number; width: number; height: number; area: number };
+          let largestRect: RectInfo | null = null;
+          
+          // Extract inner content of the group (without the opening/closing tags) for processing
+          const groupTagEndPos = matchIndex + fullElement.length;
+          const innerGroupContent = svgString.substring(groupTagEndPos, groupEnd - 4);
+          
+          // Function to recursively find rects in nested groups
+          // Add depth limit to prevent infinite recursion
+          const findRectsInContent = (content: string, parentTx: number, parentTy: number, depth: number = 0): void => {
+            // Safety: prevent infinite recursion (max depth of 10 levels)
+            if (depth > 10) {
+              console.warn('⚠️ Maximum recursion depth reached in findRectsInContent');
+              return;
+            }
+            
+            // Safety: prevent processing empty or too large content
+            if (!content || content.length > 100000) {
+              return;
+            }
+            
+            // Find all rects in content (including nested ones - we'll filter by group depth later if needed)
+            const rectRegex = /<rect[^>]*>/g;
+            const rectMatches: RegExpExecArray[] = [];
+            let rectMatch;
+            
+            // Collect all rect matches first
+            rectRegex.lastIndex = 0; // Reset regex
+            while ((rectMatch = rectRegex.exec(content)) !== null) {
+              rectMatches.push(rectMatch);
+            }
+            
+            // Process found rects
+            for (const match of rectMatches) {
+              const rectElement = match[0];
+              const rxMatch = rectElement.match(/x=["']([^"']+)["']/);
+              const ryMatch = rectElement.match(/y=["']([^"']+)["']/);
+              const rWidthMatch = rectElement.match(/width=["']([^"']+)["']/);
+              const rHeightMatch = rectElement.match(/height=["']([^"']+)["']/);
+              
+              if (rxMatch && ryMatch && rWidthMatch && rHeightMatch) {
+                const rx = parseFloat(rxMatch[1]);
+                const ry = parseFloat(ryMatch[1]);
+                const rw = parseFloat(rWidthMatch[1]);
+                const rh = parseFloat(rHeightMatch[1]);
+                
+                if (!isNaN(rx) && !isNaN(ry) && !isNaN(rw) && !isNaN(rh) && rw > 0 && rh > 0) {
+                  const area = rw * rh;
+                  // Keep the largest rect (this represents the main parking spot area)
+                  if (!largestRect || area > largestRect.area) {
+                    largestRect = {
+                      x: rx + parentTx,
+                      y: ry + parentTy,
+                      width: rw,
+                      height: rh,
+                      area: area
+                    };
+                  }
+                }
+              }
+            }
+            
+            // Also check nested groups (for floors/sections) - but limit recursion
+            // Use indexOf instead of regex to avoid regex state issues
+            const processedGroups = new Set<number>(); // Track processed group start positions
+            let groupCount = 0;
+            const maxGroups = 50; // Limit number of groups to process
+            let searchStart = 0;
+            
+            while (groupCount < maxGroups && searchStart < content.length) {
+              const groupOpenPos = content.indexOf('<g', searchStart);
+              if (groupOpenPos === -1) break;
+              
+              // Skip if we've already processed this group
+              if (processedGroups.has(groupOpenPos)) {
+                searchStart = groupOpenPos + 2;
+                continue;
+              }
+              processedGroups.add(groupOpenPos);
+              
+              const groupTagEnd = content.indexOf('>', groupOpenPos);
+              if (groupTagEnd === -1) {
+                searchStart = groupOpenPos + 2;
+                continue;
+              }
+              
+              const nestedGroupTag = content.substring(groupOpenPos, groupTagEnd + 1);
+              
+              // Find matching closing tag
+              let nestedDepth = 1;
+              let nestedPos = groupTagEnd;
+              let nestedGroupEnd = -1;
+              
+              while (nestedPos < content.length && nestedDepth > 0) {
+                const nextOpen = content.indexOf('<g', nestedPos);
+                const nextClose = content.indexOf('</g>', nestedPos);
+                
+                if (nextClose === -1) break;
+                
+                if (nextOpen !== -1 && nextOpen < nextClose) {
+                  nestedDepth++;
+                  nestedPos = nextOpen + 2;
+                } else {
+                  nestedDepth--;
+                  if (nestedDepth === 0) {
+                    nestedGroupEnd = nextClose + 4;
+                    break;
+                  }
+                  nestedPos = nextClose + 4;
+                }
+              }
+              
+              if (nestedGroupEnd > groupOpenPos && nestedGroupEnd <= content.length) {
+                // Extract inner content (without the group tags) to prevent re-processing
+                const innerContent = content.substring(groupTagEnd + 1, nestedGroupEnd - 4);
+                
+                // Only process if inner content is not empty
+                if (innerContent && innerContent.trim().length > 0) {
+                  const nestedTransformMatch = nestedGroupTag.match(/transform=["']translate\(([^)]+)\)["']/);
+                  let nestedTx = parentTx;
+                  let nestedTy = parentTy;
+                  
+                  if (nestedTransformMatch) {
+                    const nestedCoords = nestedTransformMatch[1].split(/[,\s]+/).map(parseFloat);
+                    nestedTx += nestedCoords[0] || 0;
+                    nestedTy += nestedCoords[1] || 0;
+                  }
+                  
+                  // Recursively search nested groups with increased depth
+                  findRectsInContent(innerContent, nestedTx, nestedTy, depth + 1);
+                  groupCount++;
+                }
+                
+                // Move search position past this group to avoid re-processing
+                searchStart = nestedGroupEnd;
+              } else {
+                // If we couldn't find the closing tag, skip this group
+                searchStart = groupTagEnd + 1;
+              }
+            }
+          };
+          
+          // Process the inner content of the group (without the group tags themselves)
+          findRectsInContent(innerGroupContent, tx, ty, 0);
+          
+          // Also look for path elements in the group and calculate bounding box (including nested)
+          const pathRegex = /<path[^>]*d=["']([^"']+)["'][^>]*>/g;
+          let pathMatch;
+          let pathMinX = Infinity, pathMinY = Infinity, pathMaxX = -Infinity, pathMaxY = -Infinity;
+          let foundPath = false;
+          
+          // Reset regex lastIndex
+          pathRegex.lastIndex = 0;
+          while ((pathMatch = pathRegex.exec(innerGroupContent)) !== null) {
+            const pathData = pathMatch[1];
+            // Parse path data to get bounding box (simplified - handles M, L, H, V commands)
+            const coords: number[] = [];
+            const numbers = pathData.match(/[-+]?[0-9]*\.?[0-9]+/g);
+            if (numbers) {
+              numbers.forEach(num => {
+                const val = parseFloat(num);
+                if (!isNaN(val)) coords.push(val);
+              });
+              
+              // Get min/max from coordinates
+              if (coords.length >= 2) {
+                for (let i = 0; i < coords.length; i += 2) {
+                  if (i + 1 < coords.length) {
+                    const px = coords[i] + tx;
+                    const py = coords[i + 1] + ty;
+                    pathMinX = Math.min(pathMinX, px);
+                    pathMinY = Math.min(pathMinY, py);
+                    pathMaxX = Math.max(pathMaxX, px);
+                    pathMaxY = Math.max(pathMaxY, py);
+                    foundPath = true;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Use the largest rect if found, otherwise use path bounds, otherwise fallback
+          if (largestRect) {
+            x = (largestRect as RectInfo).x;
+            y = (largestRect as RectInfo).y;
+            width = (largestRect as RectInfo).width;
+            height = (largestRect as RectInfo).height;
+          } else if (foundPath) {
+            x = pathMinX;
+            y = pathMinY;
+            width = pathMaxX - pathMinX;
+            height = pathMaxY - pathMinY;
+          } else {
+            // Fallback: try transform only with estimated size based on viewBox
+            if (transformMatch) {
+              x = tx;
+              y = ty;
+              // Use reasonable default size - adjust based on typical parking spot sizes
+              width = viewBox.width / 5; // About 1/5 of viewBox width
+              height = viewBox.height / 10; // About 1/10 of viewBox height
+            } else {
+              continue; // Skip if no transform and no rects/paths found
+            }
+          }
+        }
+        
+        // Extract spot number from ID (handle various formats)
+        // Formats: "F1-A-1", "A-1", "spot-1", "parking-1", "section-a-spot-1", etc.
+        let spotNumber = id;
+        
+        // Try different patterns
+        // Pattern 1: F{floor}-{section}-{number} or {section}-{number}
+        const sectionSpotMatch = id.match(/(?:F\d+-)?([A-Z]+)-(\d+)/i);
+        if (sectionSpotMatch) {
+          spotNumber = sectionSpotMatch[2]; // Use just the number part
+        } else {
+          // Pattern 2: spot-{number} or parking-{number}
+          const spotMatch = id.match(/(?:spot|parking)[-_]?(\d+)/i);
+          if (spotMatch) {
+            spotNumber = spotMatch[1];
+          } else {
+            // Pattern 3: Any number in the ID
+            const numMatch = id.match(/(\d+)/);
+            if (numMatch) {
+              spotNumber = numMatch[1];
+            }
+          }
+        }
+        
+        // Only add if we have valid coordinates and reasonable size
+        if (width > 0 && height > 0 && !isNaN(width) && !isNaN(height)) {
+          spots.push({
+            id,
+            x,
+            y,
+            width,
+            height,
+            spotNumber,
+            spotId: id,
+          });
+        }
+      }
+      
+      // Also look for text elements that might indicate spot numbers
+      const textRegex = /<text[^>]*>([^<]+)<\/text>/g;
+      while ((match = textRegex.exec(svgString)) !== null) {
+        const textContent = match[1].trim();
+        const textElement = match[0];
+        
+        // Check if text looks like a spot number
+        if (/^\d+$/.test(textContent)) {
+          const xMatch = textElement.match(/x=["']([^"']+)["']/);
+          const yMatch = textElement.match(/y=["']([^"']+)["']/);
+          
+          if (xMatch && yMatch) {
+            const x = parseFloat(xMatch[1]);
+            const y = parseFloat(yMatch[1]);
+            
+            // Check if we already have a spot at this location
+            const existingSpot = spots.find(s => 
+              Math.abs(s.x - x) < 20 && Math.abs(s.y - y) < 20
+            );
+            
+            if (!existingSpot) {
+              spots.push({
+                id: `text-spot-${textContent}`,
+                x: x - 15,
+                y: y - 10,
+                width: 30,
+                height: 20,
+                spotNumber: textContent,
+                spotId: `spot-${textContent}`,
+              });
+            } else {
+              // Update existing spot with number
+              existingSpot.spotNumber = textContent;
+            }
+          }
+        }
+      }
+      
+      console.log(`✅ Parsed ${spots.length} clickable spots from SVG`);
+    } catch (error) {
+      console.error('❌ Error parsing SVG:', error);
+    }
+    
+    return spots;
+  };
+
+  // Function to load spot statuses from backend (with smooth update like attendant dashboard)
+  const loadSpotStatuses = async (areaId: number, skipChangeCheck = false) => {
+    try {
+      console.log('📊 Loading spot statuses for area:', areaId);
+      const response = await ApiService.getParkingSpotsStatus(areaId);
+      
+      if (response.success && response.data.spots) {
+        // Create a Map for quick lookup by spot_number and ID
+        const newStatusMap = new Map();
+        response.data.spots.forEach((spot: any) => {
+          // Store by spot_number (primary key)
+          newStatusMap.set(spot.spot_number, spot);
+          // Also store by ID for fallback matching (matches HomeScreen approach)
+          newStatusMap.set(spot.id.toString(), spot);
+        });
+        
+        // Only update if there are changes (to avoid unnecessary re-renders)
+        if (!skipChangeCheck) {
+          setSpotStatuses(currentStatuses => {
+            // Check if there are any changes
+            let hasChanges = false;
+            
+            // Check if any spot status changed
+            for (const [spotNumber, newSpot] of newStatusMap.entries()) {
+              const currentSpot = currentStatuses.get(spotNumber);
+              if (!currentSpot || currentSpot.status !== newSpot.status) {
+                hasChanges = true;
+                break;
+              }
+            }
+            
+            // Also check if any spots were added or removed
+            if (!hasChanges && currentStatuses.size !== newStatusMap.size) {
+              hasChanges = true;
+            }
+            
+            if (hasChanges) {
+              console.log('📊 Spot statuses have changes, updating...');
+              return newStatusMap;
+            } else {
+              console.log('📊 No changes detected in spot statuses, skipping update');
+              return currentStatuses;
+            }
+          });
+        } else {
+          // Initial load - always update
+          setSpotStatuses(newStatusMap);
+          console.log(`✅ Loaded ${newStatusMap.size} spot statuses`);
+        }
+      } else {
+        console.log('⚠️ No spot statuses found');
+        if (skipChangeCheck) {
+          setSpotStatuses(new Map());
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error loading spot statuses:', error);
+      if (skipChangeCheck) {
+        setSpotStatuses(new Map());
+      }
+    }
+  };
+
   // Function to load SVG content using AJAX
   const loadSvgContent = async (forceRefresh = false) => {
     if (!bookingData?.parkingArea?.id) return;
@@ -96,11 +697,15 @@ const ActiveParkingScreen: React.FC = () => {
     // Clear existing content if forcing refresh
     if (forceRefresh) {
       setSvgContent('');
+      setClickableSpots([]);
     }
     
     setIsLoadingSvg(true);
     try {
       console.log('🖼️ Loading parking layout for area:', bookingData.parkingArea.id, forceRefresh ? '(FORCE REFRESH)' : '');
+      
+      // Load spot statuses in parallel with SVG (initial load - skip change check)
+      loadSpotStatuses(bookingData.parkingArea.id, true);
       
       // Get the layout info with SVG content directly
       const layoutInfo = await ApiService.getParkingAreaLayout(bookingData.parkingArea.id);
@@ -109,7 +714,13 @@ const ActiveParkingScreen: React.FC = () => {
       if (layoutInfo.success && layoutInfo.data.hasLayout && layoutInfo.data.layoutSvg) {
         console.log('✅ Layout found with SVG content, length:', layoutInfo.data.layoutSvg.length);
         console.log('📄 SVG preview (first 200 chars):', layoutInfo.data.layoutSvg.substring(0, 200));
+        console.log('🆔 Layout ID:', layoutInfo.data.layoutId);
         setSvgContent(layoutInfo.data.layoutSvg);
+        setLayoutId(layoutInfo.data.layoutId);
+        
+        // Parse SVG for clickable elements
+        const spots = parseSvgForClickableElements(layoutInfo.data.layoutSvg);
+        setClickableSpots(spots);
       } else {
         console.log('❌ No layout available for this area');
         console.log('📊 Response data:', {
@@ -119,10 +730,14 @@ const ActiveParkingScreen: React.FC = () => {
           layoutSvgLength: layoutInfo.data?.layoutSvg?.length || 0
         });
         setSvgContent('');
+        setClickableSpots([]);
+        setLayoutId(null);
       }
     } catch (error) {
       console.error('❌ Error loading SVG content:', error);
       setSvgContent('');
+      setClickableSpots([]);
+      setLayoutId(null);
     } finally {
       setIsLoadingSvg(false);
     }
@@ -134,6 +749,45 @@ const ActiveParkingScreen: React.FC = () => {
       loadSvgContent(true); // Force refresh when tab is activated
     }
   }, [activeTab, bookingData]);
+
+  // Real-time polling for spot status updates (like attendant dashboard)
+  useEffect(() => {
+    if (activeTab !== 'layout' || !bookingData?.parkingArea?.id) {
+      return; // Only poll when layout tab is active
+    }
+
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    
+    // Start polling every 10 seconds to update spot statuses
+    const startPolling = () => {
+      console.log('🔄 Starting real-time polling for parking spot statuses...');
+      
+      pollingInterval = setInterval(async () => {
+        try {
+          console.log('📡 Polling spot statuses for real-time updates...');
+          await loadSpotStatuses(bookingData.parkingArea.id);
+        } catch (error) {
+          console.error('❌ Error during spot status polling:', error);
+        }
+      }, 10000); // Poll every 10 seconds (same as attendant dashboard)
+    };
+
+    // Start polling after initial load
+    const timer = setTimeout(() => {
+      startPolling();
+    }, 2000); // Wait 2 seconds after initial load
+
+    // Cleanup function
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+      if (pollingInterval) {
+        console.log('🛑 Stopping real-time polling for spot statuses');
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [activeTab, bookingData?.parkingArea?.id]);
 
   // Fetch booking data when component mounts
   useEffect(() => {
@@ -697,10 +1351,24 @@ const ActiveParkingScreen: React.FC = () => {
                         parkingSpot: bookingData.parkingSlot.spotNumber,
                         timestamp: bookingData.timestamps.startTime
                       })}
-                      size={240}
+                      size={(() => {
+                        // Responsive QR code size based on screen width
+                        if (screenWidth < 375) return screenWidth * 0.6; // Small screens
+                        if (screenWidth < 414) return screenWidth * 0.65; // Medium screens
+                        if (screenWidth < 768) return Math.min(240, screenWidth * 0.6); // Large phones
+                        if (screenWidth < 1024) return Math.min(280, screenWidth * 0.4); // Tablets
+                        return Math.min(320, screenWidth * 0.35); // Large tablets
+                      })()}
                       color="black"
                       backgroundColor="white"
-                      logoSize={30}
+                      logoSize={(() => {
+                        // Responsive logo size
+                        if (screenWidth < 375) return 24;
+                        if (screenWidth < 414) return 28;
+                        if (screenWidth < 768) return 30;
+                        if (screenWidth < 1024) return 35;
+                        return 40;
+                      })()}
                       logoMargin={2}
                       logoBorderRadius={15}
                       quietZone={10}
@@ -787,7 +1455,12 @@ const ActiveParkingScreen: React.FC = () => {
                   </Text>
                   <TouchableOpacity
                     style={activeParkingScreenStyles.refreshButton}
-                    onPress={() => loadSvgContent(true)}
+                    onPress={() => {
+                      loadSvgContent(true);
+                      if (bookingData?.parkingArea?.id) {
+                        loadSpotStatuses(bookingData.parkingArea.id, true); // Force refresh on manual refresh
+                      }
+                    }}
                   >
                     <Ionicons name="refresh" size={16} color="#FFFFFF" />
                     <Text style={activeParkingScreenStyles.refreshButtonText}> Refresh</Text>
@@ -795,7 +1468,9 @@ const ActiveParkingScreen: React.FC = () => {
                 </View>
                 <View style={{ 
                   width: '100%',
-                  height: Math.min(400, screenHeight * 0.5),
+                  flex: 1,
+                  minHeight: 350,
+                  maxHeight: screenHeight * 0.65,
                   overflow: 'hidden',
                 }}>
                   <PinchGestureHandler
@@ -821,12 +1496,16 @@ const ActiveParkingScreen: React.FC = () => {
                       contentContainerStyle={{ 
                         minWidth: (screenWidth - 80) * scale,
                       }}
+                      scrollEnabled={true}
+                      bounces={false}
                     >
                       <ScrollView
                         showsVerticalScrollIndicator={true}
                         contentContainerStyle={{
                           minHeight: ((screenWidth - 80) * (322 / 276)) * scale,
                         }}
+                        scrollEnabled={true}
+                        bounces={false}
                       >
                         <View style={{
                           transform: [{ scale }],
@@ -834,13 +1513,218 @@ const ActiveParkingScreen: React.FC = () => {
                           justifyContent: 'center',
                           width: screenWidth - 80,
                           height: (screenWidth - 80) * (322 / 276),
-                        }}>
+                          position: 'relative',
+                        }}
+                        pointerEvents="box-none"
+                        >
                           <SvgXml
                             xml={svgContent}
                             width={screenWidth - 80}
                             height={(screenWidth - 80) * (322 / 276)}
                             preserveAspectRatio="xMidYMid meet"
+                            pointerEvents="none"
                           />
+                          {/* Clickable overlay container for spots */}
+                          <View 
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              pointerEvents: 'box-none',
+                            }}
+                          >
+                            {clickableSpots.map((spot) => {
+                            // Get the actual SVG dimensions from the SVG content
+                            const svgWidthMatch = svgContent.match(/<svg[^>]*width=["']([^"']+)["']/);
+                            const svgHeightMatch = svgContent.match(/<svg[^>]*height=["']([^"']+)["']/);
+                            
+                            // Container dimensions (what we pass to SvgXml)
+                            const containerWidth = screenWidth - 80;
+                            const containerHeight = (screenWidth - 80) * (322 / 276);
+                            
+                            // Extract viewBox from SVG - this is the coordinate system
+                            const viewBoxMatch = svgContent.match(/viewBox=["']([^"']+)["']/);
+                            let viewBoxX = 0;
+                            let viewBoxY = 0;
+                            let viewBoxWidth = 276;
+                            let viewBoxHeight = 322;
+                            if (viewBoxMatch) {
+                              const parts = viewBoxMatch[1].trim().split(/[\s,]+/).filter(p => p).map(Number);
+                              if (parts.length >= 4) {
+                                viewBoxX = parts[0];
+                                viewBoxY = parts[1];
+                                viewBoxWidth = parts[2];
+                                viewBoxHeight = parts[3];
+                              }
+                            }
+                            
+                            // Get actual SVG width/height if specified (for aspect ratio)
+                            let svgIntrinsicWidth = viewBoxWidth;
+                            let svgIntrinsicHeight = viewBoxHeight;
+                            if (svgWidthMatch && svgHeightMatch) {
+                              const w = parseFloat(svgWidthMatch[1]);
+                              const h = parseFloat(svgHeightMatch[1]);
+                              if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
+                                svgIntrinsicWidth = w;
+                                svgIntrinsicHeight = h;
+                              }
+                            }
+                            
+                            // Calculate aspect ratios
+                            const viewBoxAspectRatio = viewBoxWidth / viewBoxHeight;
+                            const containerAspectRatio = containerWidth / containerHeight;
+                            
+                            // With preserveAspectRatio="xMidYMid meet", calculate actual rendered size
+                            let renderedWidth = containerWidth;
+                            let renderedHeight = containerHeight;
+                            
+                            if (viewBoxAspectRatio > containerAspectRatio) {
+                              // ViewBox is wider - fit to width
+                              renderedWidth = containerWidth;
+                              renderedHeight = containerWidth / viewBoxAspectRatio;
+                            } else {
+                              // ViewBox is taller - fit to height
+                              renderedWidth = containerHeight * viewBoxAspectRatio;
+                              renderedHeight = containerHeight;
+                            }
+                            
+                            // Calculate centering offset (xMidYMid centers the content)
+                            const offsetX = (containerWidth - renderedWidth) / 2;
+                            const offsetY = (containerHeight - renderedHeight) / 2;
+                            
+                            // Calculate scale factors (viewBox units to rendered pixels)
+                            const scaleX = renderedWidth / viewBoxWidth;
+                            const scaleY = renderedHeight / viewBoxHeight;
+                            
+                            // Convert spot coordinates from viewBox space to rendered pixel space
+                            // Adjust for viewBox origin
+                            const spotXInViewBox = spot.x - viewBoxX;
+                            const spotYInViewBox = spot.y - viewBoxY;
+                            
+                            // Scale to rendered pixels
+                            const pixelX = spotXInViewBox * scaleX;
+                            const pixelY = spotYInViewBox * scaleY;
+                            
+                            // Add centering offset
+                            const finalX = offsetX + pixelX;
+                            const finalY = offsetY + pixelY;
+                            
+                            // Scale dimensions to rendered pixels
+                            const pixelWidth = spot.width * scaleX;
+                            const pixelHeight = spot.height * scaleY;
+                            
+                            // Final coordinates - exact match to spot size (no padding)
+                            const left = finalX;
+                            const top = finalY;
+                            const width = pixelWidth;
+                            const height = pixelHeight;
+                            
+                            // Verify dimensions are valid
+                            if (width <= 0 || height <= 0 || isNaN(width) || isNaN(height) || isNaN(left) || isNaN(top)) {
+                              if (__DEV__) {
+                                console.warn('⚠️ Invalid spot dimensions:', { spot: spot.id, left, top, width, height });
+                              }
+                              return null;
+                            }
+                            
+                            // Debug logging for first spot and current spot
+                            if (__DEV__ && (clickableSpots.indexOf(spot) === 0 || spot.spotNumber === bookingData?.parkingSlot?.spotNumber)) {
+                              console.log('🎯 Spot positioning:', {
+                                spotId: spot.id,
+                                spotNumber: spot.spotNumber,
+                                isFirst: clickableSpots.indexOf(spot) === 0,
+                                isCurrent: spot.spotNumber === bookingData?.parkingSlot?.spotNumber,
+                                viewBoxCoords: { x: spot.x, y: spot.y, width: spot.width, height: spot.height },
+                                viewBox: { x: viewBoxX, y: viewBoxY, width: viewBoxWidth, height: viewBoxHeight },
+                                svgIntrinsic: { width: svgIntrinsicWidth, height: svgIntrinsicHeight },
+                                container: { width: containerWidth, height: containerHeight },
+                                rendered: { width: renderedWidth, height: renderedHeight },
+                                offset: { x: offsetX, y: offsetY },
+                                scale: { x: scaleX, y: scaleY },
+                                finalCoords: { left, top, width, height },
+                                parentScale: scale,
+                              });
+                            }
+                            
+                            // Get spot status from backend (match by spot ID first, then spot_number)
+                            // Try multiple matching strategies for flexibility
+                            let spotStatus = spotStatuses.get(spot.id || '') || spotStatuses.get(spot.spotNumber || '');
+                            
+                            // If still not found, try matching without floor prefix
+                            if (!spotStatus && spot.id) {
+                              const idWithoutFloor = spot.id.replace(/^F\d+-/i, ''); // Remove "F2-" prefix
+                              spotStatus = spotStatuses.get(idWithoutFloor);
+                            }
+                            
+                            const spotStatusValue = spotStatus?.status || 'unknown';
+                            const isUserBooked = spotStatus?.is_user_booked === true || (typeof spotStatus?.is_user_booked === 'number' && spotStatus.is_user_booked === 1);
+                            
+                            // Determine color based on status
+                            // Blue = Current user's booked spot (highest priority)
+                            // Otherwise, use status-based colors (yellow for reserved, red for occupied, green for available)
+                            let backgroundColor = 'rgba(200, 200, 200, 0.1)'; // Gray for unknown
+                            let borderColor = 'rgba(200, 200, 200, 0.4)';
+                            
+                            // If current user has booked this spot, show it in blue (regardless of status)
+                            if (isUserBooked) {
+                              backgroundColor = 'rgba(0, 122, 255, 0.3)'; // Blue with transparency
+                              borderColor = 'rgba(0, 122, 255, 0.8)'; // Blue border
+                            } else {
+                              // Otherwise, use status-based colors for spots booked by others or available spots
+                              switch (spotStatusValue) {
+                                case 'available':
+                                  backgroundColor = 'rgba(52, 199, 89, 0.2)'; // Green
+                                  borderColor = 'rgba(52, 199, 89, 0.6)';
+                                  break;
+                                case 'occupied':
+                                  backgroundColor = 'rgba(255, 59, 48, 0.2)'; // Red
+                                  borderColor = 'rgba(255, 59, 48, 0.6)';
+                                  break;
+                                case 'reserved':
+                                  backgroundColor = 'rgba(255, 204, 0, 0.3)'; // Yellow for reserved by others
+                                  borderColor = 'rgba(255, 204, 0, 0.8)';
+                                  break;
+                                default:
+                                  backgroundColor = 'rgba(200, 200, 200, 0.1)'; // Gray
+                                  borderColor = 'rgba(200, 200, 200, 0.4)';
+                              }
+                            }
+                            
+                            return (
+                              <TouchableOpacity
+                                key={spot.id}
+                                style={{
+                                  position: 'absolute',
+                                  left,
+                                  top,
+                                  width,
+                                  height,
+                                  backgroundColor,
+                                  borderWidth: isUserBooked ? 2 : 1,
+                                  borderColor,
+                                  borderRadius: 2,
+                                  zIndex: 10,
+                                }}
+                                onPress={() => {
+                                  console.log('📍 Spot tapped:', spot.spotNumber || spot.id, 'Status:', spotStatusValue);
+                                  setSelectedSpot({
+                                    ...spot,
+                                    isCurrentSpot: isUserBooked,
+                                    status: spotStatusValue,
+                                    spotData: spotStatus,
+                                  });
+                                  setShowSpotModal(true);
+                                }}
+                                activeOpacity={0.6}
+                                // No hitSlop to ensure exact fit
+                                delayPressIn={0}
+                                delayPressOut={0}
+                              />
+                            );
+                            })}
+                          </View>
                         </View>
                       </ScrollView>
                     </ScrollView>
@@ -863,6 +1747,223 @@ const ActiveParkingScreen: React.FC = () => {
                   <Ionicons name="refresh" size={16} color="#FFFFFF" />
                   <Text style={activeParkingScreenStyles.refreshButtonText}> Try Again</Text>
                 </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Legend */}
+            {svgContent && (
+              <View style={{
+                marginTop: getResponsiveMargin(16),
+                marginBottom: getResponsiveMargin(8),
+                padding: getResponsivePadding(12),
+                backgroundColor: colors.card || '#FFFFFF',
+                borderRadius: getResponsiveSize(8),
+                borderWidth: 1,
+                borderColor: colors.border || '#E5E7EB',
+              }}>
+                <Text style={{
+                  fontSize: getResponsiveFontSize(14),
+                  fontWeight: 'bold',
+                  color: colors.text || '#000000',
+                  marginBottom: getResponsiveMargin(8),
+                  textAlign: 'center',
+                }}>
+                  Legend
+                </Text>
+                <View style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  gap: getResponsiveSize(12),
+                }}>
+                  {/* Road */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      width: getResponsiveSize(24),
+                      height: getResponsiveSize(12),
+                      backgroundColor: '#808080',
+                      borderRadius: 2,
+                    }} />
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Road</Text>
+                  </View>
+
+                  {/* Parking Spot */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      width: getResponsiveSize(24),
+                      height: getResponsiveSize(16),
+                      borderWidth: 1.5,
+                      borderColor: '#333333',
+                      borderRadius: 2,
+                      backgroundColor: 'transparent',
+                    }} />
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Parking Spot</Text>
+                  </View>
+
+                  {/* Available (Green) */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      width: getResponsiveSize(20),
+                      height: getResponsiveSize(20),
+                      backgroundColor: 'rgba(52, 199, 89, 0.2)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(52, 199, 89, 0.6)',
+                      borderRadius: 2,
+                    }} />
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Available</Text>
+                  </View>
+
+                  {/* Occupied (Red) */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      width: getResponsiveSize(20),
+                      height: getResponsiveSize(20),
+                      backgroundColor: 'rgba(255, 59, 48, 0.2)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 59, 48, 0.6)',
+                      borderRadius: 2,
+                    }} />
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Occupied</Text>
+                  </View>
+
+                  {/* Reserved (Yellow) */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      width: getResponsiveSize(20),
+                      height: getResponsiveSize(20),
+                      backgroundColor: 'rgba(255, 204, 0, 0.3)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 204, 0, 0.8)',
+                      borderRadius: 2,
+                    }} />
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Reserved</Text>
+                  </View>
+
+                  {/* Your Booked Spot (Blue) */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      width: getResponsiveSize(20),
+                      height: getResponsiveSize(20),
+                      backgroundColor: 'rgba(0, 122, 255, 0.3)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(0, 122, 255, 0.8)',
+                      borderRadius: 2,
+                    }} />
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Your Spot</Text>
+                  </View>
+
+                  {/* Entry Road (Green Arrow) */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}>
+                      <View style={{
+                        width: getResponsiveSize(24),
+                        height: getResponsiveSize(12),
+                        backgroundColor: '#808080',
+                        borderRadius: 2,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}>
+                        <Ionicons name="arrow-forward" size={getResponsiveSize(10)} color="#34C759" />
+                      </View>
+                    </View>
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Entry</Text>
+                  </View>
+
+                  {/* Exit Road (Red Arrow) */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginRight: getResponsiveMargin(8),
+                    marginBottom: getResponsiveMargin(4),
+                  }}>
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}>
+                      <View style={{
+                        width: getResponsiveSize(24),
+                        height: getResponsiveSize(12),
+                        backgroundColor: '#808080',
+                        borderRadius: 2,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                      }}>
+                        <Ionicons name="arrow-forward" size={getResponsiveSize(10)} color="#FF3B30" />
+                      </View>
+                    </View>
+                    <Text style={{
+                      fontSize: getResponsiveFontSize(11),
+                      color: colors.textSecondary || '#666666',
+                      marginLeft: getResponsiveMargin(6),
+                    }}>Exit</Text>
+                  </View>
+                </View>
               </View>
             )}
           </View>
@@ -986,6 +2087,97 @@ const ActiveParkingScreen: React.FC = () => {
               >
                 <Text style={activeParkingScreenStyles.spotModalCloseText}>Close</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Spot Details Modal */}
+        <Modal
+          visible={showSpotModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowSpotModal(false)}
+        >
+          <View style={activeParkingScreenStyles.modalOverlay}>
+            <View style={activeParkingScreenStyles.spotModalContent}>
+              {selectedSpot && (
+                <>
+                  <Text style={activeParkingScreenStyles.spotModalTitle}>
+                    {selectedSpot.spotNumber ? `Spot ${selectedSpot.spotNumber}` : 'Parking Spot'}
+                    {selectedSpot.isCurrentSpot && ' (Your Spot)'}
+                  </Text>
+                  
+                  <View style={activeParkingScreenStyles.spotModalInfo}>
+                    {selectedSpot.spotNumber && (
+                      <View style={activeParkingScreenStyles.spotModalRow}>
+                        <Text style={activeParkingScreenStyles.spotModalLabel}>Spot Number:</Text>
+                        <Text style={activeParkingScreenStyles.spotModalValue}>
+                          {selectedSpot.spotNumber}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {selectedSpot.spotId && (
+                      <View style={activeParkingScreenStyles.spotModalRow}>
+                        <Text style={activeParkingScreenStyles.spotModalLabel}>Spot ID:</Text>
+                        <Text style={activeParkingScreenStyles.spotModalValue}>
+                          {selectedSpot.spotId}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {bookingData?.parkingArea?.name && (
+                      <View style={activeParkingScreenStyles.spotModalRow}>
+                        <Text style={activeParkingScreenStyles.spotModalLabel}>Parking Area:</Text>
+                        <Text style={activeParkingScreenStyles.spotModalValue}>
+                          {bookingData.parkingArea.name}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {layoutId && (
+                      <View style={activeParkingScreenStyles.spotModalRow}>
+                        <Text style={activeParkingScreenStyles.spotModalLabel}>Layout ID:</Text>
+                        <Text style={activeParkingScreenStyles.spotModalValue}>
+                          {layoutId}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {selectedSpot.status && (
+                      <View style={activeParkingScreenStyles.spotModalRow}>
+                        <Text style={activeParkingScreenStyles.spotModalLabel}>Status:</Text>
+                        <Text style={[
+                          activeParkingScreenStyles.spotModalValue,
+                          {
+                            color: selectedSpot.status === 'available' ? '#34C759' :
+                                   selectedSpot.status === 'occupied' ? '#FF3B30' :
+                                   selectedSpot.status === 'reserved' ? '#FF9500' : '#8E8E93',
+                            fontWeight: 'bold'
+                          }
+                        ]}>
+                          {selectedSpot.status.charAt(0).toUpperCase() + selectedSpot.status.slice(1)}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {selectedSpot.isCurrentSpot && (
+                      <View style={activeParkingScreenStyles.spotModalRow}>
+                        <Text style={[activeParkingScreenStyles.spotModalValue, { color: '#8A0000', fontWeight: 'bold' }]}>
+                          ✓ This is your reserved parking spot
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    style={activeParkingScreenStyles.spotModalCloseButton}
+                    onPress={() => setShowSpotModal(false)}
+                  >
+                    <Text style={activeParkingScreenStyles.spotModalCloseText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </Modal>

@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { logUserActivity, ActionTypes } = require('../utils/userLogger');
 
 const router = express.Router();
 
@@ -99,6 +100,13 @@ router.post('/register', registerValidation, async (req, res) => {
     `, [email, hashedPassword, firstName, lastName]);
 
     const userId = result.insertId;
+
+    // Log user registration
+    await logUserActivity(
+      userId,
+      ActionTypes.REGISTER,
+      `User registered with email: ${email}, name: ${firstName} ${lastName}`
+    );
 
     // Generate JWT token
     const token = jwt.sign(
@@ -208,6 +216,13 @@ router.post('/login', loginValidation, async (req, res) => {
       account_type_name: user.account_type_name,
       profile_image: profileImageUrl
     };
+
+    // Log user login
+    await logUserActivity(
+      user.user_id,
+      ActionTypes.LOGIN,
+      `User logged in: ${user.email} (${user.account_type_name})`
+    );
 
     res.json({
       success: true,
@@ -344,6 +359,15 @@ router.put('/profile', authenticateToken, [
       UPDATE users SET ${updateFields.join(', ')} WHERE user_id = ?
     `, updateValues);
 
+    // Log profile update
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.PROFILE_UPDATE,
+      `Profile updated: ${updateFields.join(', ')}`,
+      req.user.user_id,
+      updateFields.join(', ')
+    );
+
     res.json({
       success: true,
       message: 'Profile updated successfully'
@@ -400,6 +424,15 @@ router.post('/profile/picture', authenticateToken, upload.single('profilePicture
     const host = req.get('host');
     const protocol = req.protocol;
     const profileImageUrl = `${protocol}://${host}/uploads/profile-pictures/${filename}`;
+
+    // Log profile image update
+    await logUserActivity(
+      userId,
+      ActionTypes.PROFILE_IMAGE_UPDATE,
+      `Profile image uploaded: ${filename}`,
+      userId,
+      'profile_picture'
+    );
 
     res.json({
       success: true,
@@ -463,6 +496,15 @@ router.delete('/profile/picture', authenticateToken, async (req, res) => {
       }
     }
 
+    // Log profile image deletion
+    await logUserActivity(
+      userId,
+      ActionTypes.PROFILE_IMAGE_UPDATE,
+      `Profile image deleted`,
+      userId,
+      'profile_picture'
+    );
+
     res.json({
       success: true,
       message: 'Profile picture deleted successfully'
@@ -523,6 +565,15 @@ router.put('/change-password', authenticateToken, [
     await db.query(
       'UPDATE users SET password = ? WHERE user_id = ?',
       [hashedNewPassword, req.user.user_id]
+    );
+
+    // Log password change
+    await logUserActivity(
+      req.user.user_id,
+      ActionTypes.PASSWORD_CHANGE,
+      `Password changed successfully`,
+      req.user.user_id,
+      'password'
     );
 
     res.json({

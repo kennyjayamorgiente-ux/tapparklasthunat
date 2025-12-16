@@ -355,6 +355,7 @@ export const getHomeScreenStyles = (colors: ThemeColors) => StyleSheet.create({
     width: screenWidth * 0.85,
     maxWidth: 400,
     alignItems: 'center',
+    flexDirection: 'column',
   },
   modalTitle: {
     fontSize: getResponsiveFontSize(20),
