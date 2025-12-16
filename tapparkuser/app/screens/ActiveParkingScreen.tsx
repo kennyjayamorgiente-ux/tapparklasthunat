@@ -813,6 +813,7 @@ const ActiveParkingScreen: React.FC = () => {
           // Try to get booking details by reservation ID
           const response = await ApiService.getBookingDetails(Number(reservationId));
           if (response.success) {
+            console.log('📱 Booking data received - qrKey:', response.data.qrKey);
             setBookingData(response.data);
             
             // If booking is already active, start timer immediately
@@ -1346,38 +1347,86 @@ const ActiveParkingScreen: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'ticket' && (
-          <View style={activeParkingScreenStyles.ticketContainer}>
+          <ScrollView 
+            style={activeParkingScreenStyles.ticketContainer}
+            contentContainerStyle={activeParkingScreenStyles.ticketContentContainer}
+            showsVerticalScrollIndicator={true}
+            bounces={true}
+          >
             {/* QR Code Section - Real QR Code Display */}
             <View style={activeParkingScreenStyles.qrSection}>
               <View style={activeParkingScreenStyles.qrContainer}>
                 {bookingData ? (
                   <View>
                     <QRCode
-                      value={JSON.stringify({
-                        reservationId: bookingData.reservationId,
-                        displayName: bookingData.displayName,
-                        vehiclePlate: bookingData.vehicleDetails.plateNumber,
-                        parkingArea: bookingData.parkingArea.name,
-                        parkingSpot: bookingData.parkingSlot.spotNumber,
-                        timestamp: bookingData.timestamps.startTime
-                      })}
+                      value={(() => {
+                        // Debug: Log the raw bookingData.qrKey value
+                        console.log('🔍 Raw bookingData.qrKey:', bookingData.qrKey);
+                        console.log('🔍 Type of qrKey:', typeof bookingData.qrKey);
+                        
+                        // Validate and clean qrKey - ensure it's a string, not JSON
+                        let qrKey: string | null = null;
+                        
+                        if (bookingData.qrKey !== null && bookingData.qrKey !== undefined && bookingData.qrKey !== '') {
+                          const rawKey = String(bookingData.qrKey).trim();
+                          console.log('🔍 Raw key after String() and trim():', rawKey);
+                          
+                          // Check if it's JSON (starts with { or [)
+                          if (rawKey.startsWith('{') || rawKey.startsWith('[')) {
+                            try {
+                              const parsed = JSON.parse(rawKey);
+                              // If it parsed to an object, it's not a valid UUID - skip it
+                              console.warn('⚠️  qrKey contains JSON instead of UUID:', parsed);
+                              qrKey = null;
+                            } catch (e) {
+                              // Parse failed but starts with {, still not valid
+                              console.warn('⚠️  qrKey starts with { but is not valid JSON');
+                              qrKey = null;
+                            }
+                          } else {
+                            // Not JSON - use it as is (should be UUID string)
+                            qrKey = rawKey;
+                            console.log('✅ Using qrKey:', qrKey);
+                          }
+                        } else {
+                          console.error('❌ bookingData.qrKey is null, undefined, or empty');
+                          console.error('❌ Full bookingData:', JSON.stringify(bookingData, null, 2));
+                        }
+                        
+                        // Build QR data - only include qr_key
+                        if (!qrKey) {
+                          console.error('❌ No valid qr_key available for QR code');
+                          console.error('❌ This reservation may not have a qr_key in the database');
+                          // Don't generate QR code with invalid data - return empty string
+                          // The UI should handle this case
+                          return '';
+                        }
+                        
+                        const qrData = {
+                          qr_key: qrKey
+                        };
+                        
+                        const qrString = JSON.stringify(qrData);
+                        console.log('📱 QR Code Data (qr_key only):', qrString);
+                        return qrString;
+                      })()}
                       size={(() => {
-                        // Responsive QR code size based on screen width
-                        if (screenWidth < 375) return screenWidth * 0.6; // Small screens
-                        if (screenWidth < 414) return screenWidth * 0.65; // Medium screens
-                        if (screenWidth < 768) return Math.min(240, screenWidth * 0.6); // Large phones
-                        if (screenWidth < 1024) return Math.min(280, screenWidth * 0.4); // Tablets
-                        return Math.min(320, screenWidth * 0.35); // Large tablets
+                        // Enlarged responsive QR code size based on screen width
+                        if (screenWidth < 375) return screenWidth * 0.75; // Small screens - increased from 0.6
+                        if (screenWidth < 414) return screenWidth * 0.8; // Medium screens - increased from 0.65
+                        if (screenWidth < 768) return Math.min(300, screenWidth * 0.75); // Large phones - increased from 240/0.6
+                        if (screenWidth < 1024) return Math.min(400, screenWidth * 0.5); // Tablets - increased from 280/0.4
+                        return Math.min(450, screenWidth * 0.45); // Large tablets - increased from 320/0.35
                       })()}
                       color="black"
                       backgroundColor="white"
                       logoSize={(() => {
-                        // Responsive logo size
-                        if (screenWidth < 375) return 24;
-                        if (screenWidth < 414) return 28;
-                        if (screenWidth < 768) return 30;
-                        if (screenWidth < 1024) return 35;
-                        return 40;
+                        // Enlarged responsive logo size
+                        if (screenWidth < 375) return 30; // increased from 24
+                        if (screenWidth < 414) return 35; // increased from 28
+                        if (screenWidth < 768) return 40; // increased from 30
+                        if (screenWidth < 1024) return 50; // increased from 35
+                        return 60; // increased from 40
                       })()}
                       logoMargin={2}
                       logoBorderRadius={15}
@@ -1445,7 +1494,7 @@ const ActiveParkingScreen: React.FC = () => {
                 </View>
               </View>
             </View>
-          </View>
+          </ScrollView>
         )}
 
         {activeTab === 'layout' && (

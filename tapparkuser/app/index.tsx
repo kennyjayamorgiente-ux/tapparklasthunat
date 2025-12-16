@@ -1,11 +1,19 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../contexts/AuthContext';
+import { useContext } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
 import Splash1Screen from './screens/Splash1Screen';
 
 export default function Index() {
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const authContext = useContext(AuthContext);
+  
+  // If AuthProvider is not ready, show splash screen
+  if (!authContext) {
+    return <Splash1Screen />;
+  }
+  
+  const { isAuthenticated, user, isLoading } = authContext;
 
   useEffect(() => {
     if (!isLoading) {
@@ -21,7 +29,7 @@ export default function Index() {
         }
       }
     }
-  }, [isAuthenticated, isLoading, user]);
+  }, [isAuthenticated, isLoading, user, router]);
 
   // Show splash screen while loading or if not authenticated
   if (isLoading || !isAuthenticated) {
