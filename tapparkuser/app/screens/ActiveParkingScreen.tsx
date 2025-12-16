@@ -1036,6 +1036,11 @@ const ActiveParkingScreen: React.FC = () => {
                 const balanceResponse = await ApiService.getSubscriptionBalance();
                 const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
                 
+                // Check for penalty information from booking details
+                const penaltyInfo = details.penaltyInfo || null;
+                const hasPenalty = penaltyInfo?.hasPenalty || false;
+                const penaltyHours = penaltyInfo?.penaltyHours || 0;
+
                 setParkingEndDetails({
                   durationMinutes,
                   durationHours,
@@ -1044,9 +1049,22 @@ const ActiveParkingScreen: React.FC = () => {
                   startTime: details.timestamps.startTime,
                   endTime: endTime.toISOString(),
                   areaName: details.parkingArea?.name || 'Unknown',
-                  spotNumber: details.parkingSlot?.spotNumber || 'Unknown'
+                  spotNumber: details.parkingSlot?.spotNumber || 'Unknown',
+                  hasPenalty: hasPenalty,
+                  penaltyHours: penaltyHours
                 });
                 setShowParkingEndModal(true);
+
+                // Show alert if there's a penalty
+                if (hasPenalty && penaltyHours > 0) {
+                  const penaltyHoursFormatted = Math.floor(penaltyHours);
+                  const penaltyMinutesFormatted = Math.round((penaltyHours - penaltyHoursFormatted) * 60);
+                  Alert.alert(
+                    'Penalty Notice',
+                    `You exceeded your remaining balance by ${penaltyHoursFormatted} hour${penaltyHoursFormatted !== 1 ? 's' : ''} ${penaltyMinutesFormatted} minute${penaltyMinutesFormatted !== 1 ? 's' : ''}. This penalty will be deducted from your next subscription plan.`,
+                    [{ text: 'OK', style: 'default' }]
+                  );
+                }
               }
             } catch (error) {
               console.error('Error fetching parking end details:', error);
@@ -2225,6 +2243,33 @@ const ActiveParkingScreen: React.FC = () => {
                       {formatHoursToHHMM(parkingEndDetails.balanceHours)} hr{parkingEndDetails.balanceHours >= 1 ? 's' : ''}
                     </Text>
                   </View>
+                  
+                  {parkingEndDetails.hasPenalty && parkingEndDetails.penaltyHours > 0 && (
+                    <View style={[activeParkingScreenStyles.parkingEndDetailRow, { 
+                      backgroundColor: 'rgba(255, 193, 7, 0.1)', 
+                      padding: 12, 
+                      borderRadius: 8, 
+                      marginTop: 8,
+                      borderLeftWidth: 4,
+                      borderLeftColor: '#FFC107'
+                    }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[activeParkingScreenStyles.parkingEndDetailLabel, { 
+                          color: '#FF9800', 
+                          fontWeight: 'bold',
+                          marginBottom: 4 
+                        }]}>
+                          ⚠️ Penalty Notice
+                        </Text>
+                        <Text style={[activeParkingScreenStyles.parkingEndDetailValue, { 
+                          color: '#F57C00',
+                          fontSize: getResponsiveFontSize(12)
+                        }]}>
+                          You exceeded your balance by {formatHoursToHHMM(parkingEndDetails.penaltyHours)} hr. This penalty will be deducted from your next subscription plan.
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                   
                   <View style={activeParkingScreenStyles.parkingEndDetailRow}>
                     <Text style={activeParkingScreenStyles.parkingEndDetailLabel}>Parking Area:</Text>

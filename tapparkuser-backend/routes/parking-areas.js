@@ -636,6 +636,7 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         r.reservation_id,
         r.time_stamp,
         r.start_time,
+        r.end_time,
         r.booking_status,
         r.QR,
         u.first_name,
@@ -670,6 +671,27 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
 
     const booking = bookingDetails[0];
 
+    // Check for penalty if reservation is completed
+    let penaltyInfo = null;
+    if (booking.booking_status === 'completed' && booking.start_time && booking.end_time) {
+      // Get the most recent penalty for this reservation (if any)
+      // We'll check if there's a penalty record created around the time of completion
+      const penaltyRecord = await db.query(`
+        SELECT penalty_time
+        FROM penalty
+        WHERE user_id = ?
+        ORDER BY penalty_id DESC
+        LIMIT 1
+      `, [req.user.user_id]);
+
+      if (penaltyRecord.length > 0) {
+        penaltyInfo = {
+          penaltyHours: penaltyRecord[0].penalty_time,
+          hasPenalty: true
+        };
+      }
+    }
+
     res.json({
       success: true,
       data: {
@@ -695,10 +717,12 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         },
         timestamps: {
           bookingTime: booking.time_stamp,
-          startTime: booking.start_time
+          startTime: booking.start_time,
+          endTime: booking.end_time || null
         },
         bookingStatus: booking.booking_status,
-        qrCode: booking.QR
+        qrCode: booking.QR,
+        penaltyInfo: penaltyInfo
       }
     });
 

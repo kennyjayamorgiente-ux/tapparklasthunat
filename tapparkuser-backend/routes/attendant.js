@@ -575,18 +575,29 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
       LIMIT 1
     `, [reservationData.user_id]);
 
+    // Check if duration exceeds available balance
+    const exceedsBalance = activeSubscription.length > 0 && activeSubscription[0].hours_remaining < chargeHours;
+    
     // Calculate hours to deduct (deduct what's available, up to chargeHours)
     let hoursToDeduct = 0;
+    let penaltyHours = 0;
     
     if (activeSubscription.length > 0 && balanceHours > 0 && chargeHours > 0) {
       hoursToDeduct = Math.min(chargeHours, activeSubscription[0].hours_remaining);
-      console.log(`💰 Deduction calculation: chargeHours=${chargeHours}, available=${activeSubscription[0].hours_remaining}, willDeduct=${hoursToDeduct}`);
+      
+      // Calculate penalty if user exceeds their balance (regardless of how much they have)
+      if (exceedsBalance) {
+        penaltyHours = chargeHours - activeSubscription[0].hours_remaining;
+        console.log(`⚠️ Penalty detected: User has ${activeSubscription[0].hours_remaining} hours, used ${chargeHours} hours, penalty: ${penaltyHours} hours`);
+      }
+      
+      console.log(`💰 Deduction calculation: chargeHours=${chargeHours}, available=${activeSubscription[0].hours_remaining}, willDeduct=${hoursToDeduct}, penalty=${penaltyHours}`);
     } else {
       console.log(`⚠️ Cannot deduct: activeSubscription.length=${activeSubscription.length}, balanceHours=${balanceHours}, chargeHours=${chargeHours}`);
     }
 
-    // Use transaction to ensure all updates happen atomically
-    await db.transaction([
+    // Build transaction queries
+    const transactionQueries = [
       // Update booking status to completed and set end time
       {
         sql: `
@@ -637,7 +648,21 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
           'completed' // Status at scan
         ]
       }
-    ]);
+    ];
+
+    // Add penalty insertion if penalty exists
+    if (penaltyHours > 0) {
+      transactionQueries.push({
+        sql: `
+          INSERT INTO penalty (user_id, penalty_time)
+          VALUES (?, ?)
+        `,
+        params: [reservationData.user_id, penaltyHours]
+      });
+    }
+
+    // Use transaction to ensure all updates happen atomically
+    await db.transaction(transactionQueries);
 
     // Verify the deduction by getting updated balance (include all active subscriptions, even if hours_remaining is 0)
     const updatedSubscriptionHours = await db.query(`
@@ -662,9 +687,17 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
 
     console.log(`✅ Parking session ended for reservation ${reservationData.reservation_id}`);
 
+    // Prepare response message
+    let responseMessage = 'Parking session ended successfully';
+    if (penaltyHours > 0) {
+      const penaltyHoursFormatted = Math.floor(penaltyHours);
+      const penaltyMinutesFormatted = Math.round((penaltyHours - penaltyHoursFormatted) * 60);
+      responseMessage = `Parking session ended successfully. You exceeded your remaining balance by ${penaltyHoursFormatted} hour${penaltyHoursFormatted !== 1 ? 's' : ''} ${penaltyMinutesFormatted} minute${penaltyMinutesFormatted !== 1 ? 's' : ''}. This penalty will be deducted from your next subscription plan.`;
+    }
+
     res.json({
       success: true,
-      message: 'Parking session ended successfully',
+      message: responseMessage,
       data: {
         reservationId: reservationData.reservation_id,
         vehiclePlate: reservationData.plate_number,
@@ -677,7 +710,9 @@ router.post('/end-parking-session', authenticateToken, async (req, res) => {
         durationHours: durationHours,
         chargeHours: hoursToDeduct,
         balanceHours: verifiedBalanceHours,
-        status: 'completed'
+        status: 'completed',
+        penaltyHours: penaltyHours > 0 ? penaltyHours : 0,
+        hasPenalty: penaltyHours > 0
       }
     });
 

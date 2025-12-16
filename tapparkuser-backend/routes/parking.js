@@ -306,25 +306,24 @@ router.post('/end/:sessionId', authenticateToken, async (req, res) => {
       });
     }
 
-    // Compare decimal hours (e.g., 0.50 for 30 minutes)
-    if (subscriptionHours[0].hours_remaining < durationHours) {
-      const hoursPart = Math.floor(durationHours);
-      const minutesPart = Math.round((durationHours - hoursPart) * 60);
-      const availableHours = Math.floor(subscriptionHours[0].hours_remaining);
-      const availableMinutes = Math.round((subscriptionHours[0].hours_remaining - availableHours) * 60);
-      return res.status(400).json({
-        success: false,
-        message: `Insufficient subscription hours. Required: ${hoursPart} hours ${minutesPart} minutes, Available: ${availableHours} hours ${availableMinutes} minutes`
-      });
+    // Check if duration exceeds available balance
+    const exceedsBalance = subscriptionHours[0].hours_remaining < durationHours;
+    
+    // Calculate penalty if user exceeds their balance (regardless of how much they have)
+    let penaltyHours = 0;
+    if (exceedsBalance) {
+      penaltyHours = durationHours - subscriptionHours[0].hours_remaining;
+      console.log(`⚠️ Penalty detected: User has ${subscriptionHours[0].hours_remaining} hours, used ${durationHours} hours, penalty: ${penaltyHours} hours`);
     }
 
     // Use subscription hours
     const paymentMethod = 'subscription';
     const subscriptionId = subscriptionHours[0].subscription_id;
-    const hoursToDeduct = durationHours;
+    // Deduct only what's available, excess will be penalty
+    const hoursToDeduct = Math.min(durationHours, subscriptionHours[0].hours_remaining);
 
-    // Process payment using subscription hours only
-    const results = await db.transaction([
+    // Build transaction queries
+    const transactionQueries = [
       {
         sql: `
           UPDATE reservations 
@@ -336,7 +335,7 @@ router.post('/end/:sessionId', authenticateToken, async (req, res) => {
       {
         sql: `
           UPDATE subscriptions 
-          SET hours_remaining = hours_remaining - ?, hours_used = hours_used + ?
+          SET hours_remaining = GREATEST(0, hours_remaining - ?), hours_used = hours_used + ?
           WHERE subscription_id = ?
         `,
         params: [hoursToDeduct, hoursToDeduct, subscriptionId]
@@ -359,11 +358,33 @@ router.post('/end/:sessionId', authenticateToken, async (req, res) => {
         `,
         params: [totalCost, subscriptionId]
       }
-    ]);
+    ];
+
+    // Add penalty insertion if penalty exists
+    if (penaltyHours > 0) {
+      transactionQueries.push({
+        sql: `
+          INSERT INTO penalty (user_id, penalty_time)
+          VALUES (?, ?)
+        `,
+        params: [req.user.user_id, penaltyHours]
+      });
+    }
+
+    // Process payment using subscription hours only
+    await db.transaction(transactionQueries);
+
+    // Prepare response message
+    let responseMessage = 'Parking session ended successfully';
+    if (penaltyHours > 0) {
+      const penaltyHoursFormatted = Math.floor(penaltyHours);
+      const penaltyMinutesFormatted = Math.round((penaltyHours - penaltyHoursFormatted) * 60);
+      responseMessage = `Parking session ended successfully. You exceeded your remaining balance by ${penaltyHoursFormatted} hour${penaltyHoursFormatted !== 1 ? 's' : ''} ${penaltyMinutesFormatted} minute${penaltyMinutesFormatted !== 1 ? 's' : ''}. This penalty will be deducted from your next subscription plan.`;
+    }
 
     res.json({
       success: true,
-      message: 'Parking session ended successfully',
+      message: responseMessage,
       data: {
         session: {
           id: sessionId,
@@ -373,7 +394,9 @@ router.post('/end/:sessionId', authenticateToken, async (req, res) => {
           endTime: endTime.toISOString(),
           paymentMethod,
           hoursDeducted: hoursToDeduct,
-          subscriptionId: subscriptionId
+          subscriptionId: subscriptionId,
+          penaltyHours: penaltyHours > 0 ? penaltyHours : 0,
+          hasPenalty: penaltyHours > 0
         }
       }
     });
