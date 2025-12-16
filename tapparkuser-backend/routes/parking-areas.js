@@ -679,6 +679,7 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         r.reservation_id,
         r.time_stamp,
         r.start_time,
+        r.end_time,
         r.booking_status,
         r.QR,
         r.qr_key,
@@ -773,7 +774,8 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         },
         timestamps: {
           bookingTime: booking.time_stamp,
-          startTime: booking.start_time
+          startTime: booking.start_time,
+          endTime: booking.end_time || null
         },
         bookingStatus: booking.booking_status,
         qrCode: booking.QR,

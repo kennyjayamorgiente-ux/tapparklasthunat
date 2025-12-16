@@ -480,18 +480,18 @@ export default function HomeScreen() {
                 requestAnimationFrame(() => {
                   setTimeout(() => {
                     showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
-                    router.push({
-                      pathname: '/screens/ActiveParkingScreen',
-                      params: {
-                        reservationId: response.data.reservationId,
-                        sessionId: response.data.reservationId
-                      }
-                    });
+                router.push({
+                  pathname: '/screens/ActiveParkingScreen',
+                  params: {
+                    reservationId: response.data.reservationId,
+                    sessionId: response.data.reservationId
+                  }
+                });
                     setTimeout(() => hideLoading(), 500);
-                    setIsBookingModalVisible(false);
-                    setSelectedVehicleForParking(null);
-                    setSelectedParkingArea(null);
-                    setParkingSpots([]);
+                setIsBookingModalVisible(false);
+                setSelectedVehicleForParking(null);
+                setSelectedParkingArea(null);
+                setParkingSpots([]);
                   }, 150);
                 });
               }
@@ -584,28 +584,28 @@ export default function HomeScreen() {
                 requestAnimationFrame(() => {
                   setTimeout(() => {
                     showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
-                    router.push({
-                      pathname: '/screens/ActiveParkingScreen',
-                      params: {
-                        sessionId: bookingDetails.reservationId,
-                        vehicleId: selectedVehicleForParking.id,
-                        vehiclePlate: bookingDetails.vehiclePlate,
-                        vehicleType: bookingDetails.vehicleType,
-                        vehicleBrand: bookingDetails.vehicleBrand,
-                        areaName: bookingDetails.areaName,
-                        areaLocation: bookingDetails.areaLocation,
-                        spotNumber: bookingDetails.spotNumber,
-                        spotType: bookingDetails.spotType,
-                        startTime: bookingDetails.startTime,
-                        status: bookingDetails.status
-                      }
-                    });
+                router.push({
+                  pathname: '/screens/ActiveParkingScreen',
+                  params: {
+                    sessionId: bookingDetails.reservationId,
+                    vehicleId: selectedVehicleForParking.id,
+                    vehiclePlate: bookingDetails.vehiclePlate,
+                    vehicleType: bookingDetails.vehicleType,
+                    vehicleBrand: bookingDetails.vehicleBrand,
+                    areaName: bookingDetails.areaName,
+                    areaLocation: bookingDetails.areaLocation,
+                    spotNumber: bookingDetails.spotNumber,
+                    spotType: bookingDetails.spotType,
+                    startTime: bookingDetails.startTime,
+                    status: bookingDetails.status
+                  }
+                });
                     setTimeout(() => hideLoading(), 500);
-                    setIsBookingModalVisible(false);
-                    setSelectedVehicleForParking(null);
-                    setSelectedParkingArea(null);
-                    setAssignedSpotDetails(null);
-                    setAssignedSlot('');
+                setIsBookingModalVisible(false);
+                setSelectedVehicleForParking(null);
+                setSelectedParkingArea(null);
+                setAssignedSpotDetails(null);
+                setAssignedSlot('');
                   }, 150);
                 });
               }
@@ -767,7 +767,7 @@ export default function HomeScreen() {
         Alert.alert('Error', 'Parking area information is missing. Please try again.');
         return;
       }
-      
+
       console.log('🚀 Calling ApiService.bookParkingSpot with:', {
         vehicleId: vehicle.id,
         spotId: spot.parking_spot_id,
@@ -811,27 +811,27 @@ export default function HomeScreen() {
                 requestAnimationFrame(() => {
                   setTimeout(() => {
                     showLoading('Loading parking session...', '/screens/ActiveParkingScreen');
-                    router.push({
-                      pathname: '/screens/ActiveParkingScreen',
-                      params: {
-                        sessionId: response.data.reservationId,
-                        vehicleId: vehicle.id,
-                        vehiclePlate: response.data.bookingDetails.vehiclePlate,
-                        vehicleType: response.data.bookingDetails.vehicleType,
-                        vehicleBrand: response.data.bookingDetails.vehicleBrand,
-                        areaName: response.data.bookingDetails.areaName,
-                        areaLocation: response.data.bookingDetails.areaLocation,
-                        spotNumber: response.data.bookingDetails.spotNumber,
-                        spotType: response.data.bookingDetails.spotType,
-                        startTime: response.data.bookingDetails.startTime,
-                        status: response.data.bookingDetails.status
-                      }
-                    });
+                router.push({
+                  pathname: '/screens/ActiveParkingScreen',
+                  params: {
+                    sessionId: response.data.reservationId,
+                    vehicleId: vehicle.id,
+                    vehiclePlate: response.data.bookingDetails.vehiclePlate,
+                    vehicleType: response.data.bookingDetails.vehicleType,
+                    vehicleBrand: response.data.bookingDetails.vehicleBrand,
+                    areaName: response.data.bookingDetails.areaName,
+                    areaLocation: response.data.bookingDetails.areaLocation,
+                    spotNumber: response.data.bookingDetails.spotNumber,
+                    spotType: response.data.bookingDetails.spotType,
+                    startTime: response.data.bookingDetails.startTime,
+                    status: response.data.bookingDetails.status
+                  }
+                });
                     setTimeout(() => hideLoading(), 500);
-                    // Reset all states
-                    setSelectedSpotForBooking(null);
-                    setSelectedVehicleForParking(null);
-                    setSelectedParkingArea(null);
+                // Reset all states
+                setSelectedSpotForBooking(null);
+                setSelectedVehicleForParking(null);
+                setSelectedParkingArea(null);
                   }, 150);
                 });
               }
@@ -1596,7 +1596,7 @@ export default function HomeScreen() {
       setTimeout(() => hideLoading(), 300);
     }}>
       <ProfilePicture size={32} />
-    </TouchableOpacity>
+          </TouchableOpacity>
   );
 
   return (
@@ -2208,7 +2208,7 @@ export default function HomeScreen() {
                       nestedScrollEnabled={true}
                       style={{ width: scrollViewWidth }}
                       contentContainerStyle={{ 
-                        alignItems: 'center',
+    alignItems: 'center',
                         paddingVertical: getResponsivePadding(10),
                       }}
                     >
@@ -2434,23 +2434,23 @@ export default function HomeScreen() {
               }}>
                 <Text style={{
                   fontSize: getResponsiveFontSize(14),
-                  fontWeight: 'bold',
+    fontWeight: 'bold',
                   color: colors.text || '#000000',
                   marginBottom: getResponsiveMargin(8),
-                  textAlign: 'center',
+    textAlign: 'center',
                 }}>
                   Legend
                 </Text>
                 <View style={{
                   flexDirection: 'row',
                   flexWrap: 'wrap',
-                  justifyContent: 'center',
+    justifyContent: 'center',
                   gap: getResponsiveSize(12),
                 }}>
                   {/* Road */}
                   <View style={{
                     flexDirection: 'row',
-                    alignItems: 'center',
+    alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
                     marginBottom: getResponsiveMargin(4),
                   }}>
@@ -2469,7 +2469,7 @@ export default function HomeScreen() {
 
                   {/* Parking Spot */}
                   <View style={{
-                    flexDirection: 'row',
+      flexDirection: 'row',
                     alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
                     marginBottom: getResponsiveMargin(4),
@@ -2491,8 +2491,8 @@ export default function HomeScreen() {
 
                   {/* Available (Green) */}
                   <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
                     marginBottom: getResponsiveMargin(4),
                   }}>
@@ -2500,7 +2500,7 @@ export default function HomeScreen() {
                       width: getResponsiveSize(20),
                       height: getResponsiveSize(20),
                       backgroundColor: 'rgba(52, 199, 89, 0.2)',
-                      borderWidth: 1,
+    borderWidth: 1,
                       borderColor: 'rgba(52, 199, 89, 0.6)',
                       borderRadius: 2,
                     }} />
@@ -2514,15 +2514,15 @@ export default function HomeScreen() {
                   {/* Occupied (Red) */}
                   <View style={{
                     flexDirection: 'row',
-                    alignItems: 'center',
+      alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
-                    marginBottom: getResponsiveMargin(4),
+    marginBottom: getResponsiveMargin(4),
                   }}>
                     <View style={{
                       width: getResponsiveSize(20),
                       height: getResponsiveSize(20),
                       backgroundColor: 'rgba(255, 59, 48, 0.2)',
-                      borderWidth: 1,
+    borderWidth: 1,
                       borderColor: 'rgba(255, 59, 48, 0.6)',
                       borderRadius: 2,
                     }} />
@@ -2538,7 +2538,7 @@ export default function HomeScreen() {
                     flexDirection: 'row',
                     alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
-                    marginBottom: getResponsiveMargin(4),
+    marginBottom: getResponsiveMargin(4),
                   }}>
                     <View style={{
                       width: getResponsiveSize(20),
@@ -2560,7 +2560,7 @@ export default function HomeScreen() {
                     flexDirection: 'row',
                     alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
-                    marginBottom: getResponsiveMargin(4),
+    marginBottom: getResponsiveMargin(4),
                   }}>
                     <View style={{
                       width: getResponsiveSize(20),
@@ -2579,14 +2579,14 @@ export default function HomeScreen() {
 
                   {/* Entry Road (Green Arrow) */}
                   <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
                     marginBottom: getResponsiveMargin(4),
                   }}>
                     <View style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
                     }}>
                       <View style={{
                         width: getResponsiveSize(24),
@@ -2608,8 +2608,8 @@ export default function HomeScreen() {
 
                   {/* Exit Road (Red Arrow) */}
                   <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
                     marginRight: getResponsiveMargin(8),
                     marginBottom: getResponsiveMargin(4),
                   }}>
@@ -2622,7 +2622,7 @@ export default function HomeScreen() {
                         height: getResponsiveSize(12),
                         backgroundColor: '#808080',
                         borderRadius: 2,
-                        justifyContent: 'center',
+    justifyContent: 'center',
                         alignItems: 'center',
                       }}>
                         <Ionicons name="arrow-forward" size={getResponsiveSize(10)} color="#FF3B30" />
@@ -2680,9 +2680,9 @@ export default function HomeScreen() {
                   <TouchableOpacity 
                     style={{
                       backgroundColor: colors.card,
-                      borderWidth: 1,
+      borderWidth: 1,
                       borderColor: colors.primary,
-                      borderRadius: 8,
+      borderRadius: 8,
                     }}
                     onPress={() => setIsAreaDropdownVisible(!isAreaDropdownVisible)}
                     activeOpacity={0.7}
@@ -2690,15 +2690,15 @@ export default function HomeScreen() {
                     <View style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
+      justifyContent: 'space-between',
                       paddingHorizontal: 12,
                       paddingVertical: 10,
                       minHeight: 40,
                     }}>
                       <Text style={{
-                        fontSize: getResponsiveFontSize(14),
+    fontSize: getResponsiveFontSize(14),
                         color: selectedAreaForSeeAll ? colors.text : colors.textSecondary,
-                        flex: 1,
+      flex: 1,
                       }}>
                         {selectedAreaForSeeAll ? selectedAreaForSeeAll.name : 'Select Parking Area'}
                       </Text>
@@ -2716,7 +2716,7 @@ export default function HomeScreen() {
                   {isAreaDropdownVisible && (
                     <View 
                       style={{
-                        position: 'absolute',
+      position: 'absolute',
                         top: '100%',
                         left: 0,
                         right: 0,
@@ -2788,24 +2788,24 @@ export default function HomeScreen() {
                 ) : (
                   <View 
                     style={{ 
-                      flex: 1,
+      flex: 1,
                       position: 'relative', 
                       minHeight: 100,
-                      width: '100%',
+    width: '100%',
                     }}
                     pointerEvents="auto"
                   >
                     <ScrollView 
                       style={{ 
-                        flex: 1,
-                        width: '100%', 
+    flex: 1,
+      width: '100%',
                         opacity: isLoadingParkingSpots ? 0.5 : 1 
                       }}
                       contentContainerStyle={{
                         paddingBottom: getResponsivePadding(10),
-                        flexDirection: 'row',
+    flexDirection: 'row',
                         flexWrap: 'wrap',
-                        justifyContent: 'space-between',
+    justifyContent: 'space-between',
                       }}
                       showsVerticalScrollIndicator={true}
                       nestedScrollEnabled={true}
@@ -2855,7 +2855,7 @@ export default function HomeScreen() {
                             pointerEvents="none"
                             style={{
                               backgroundColor: backgroundColor,
-                              borderWidth: 1,
+    borderWidth: 1,
                               borderColor: borderColor,
                               borderRadius: 8,
                               padding: 12,
@@ -2882,7 +2882,7 @@ export default function HomeScreen() {
                               alignSelf: 'flex-start'
                             }}>
                               <Text style={{ 
-                                fontSize: getResponsiveFontSize(10), 
+    fontSize: getResponsiveFontSize(10),
                                 fontWeight: '600',
                                 color: statusBadgeText
                               }}>
@@ -2896,14 +2896,14 @@ export default function HomeScreen() {
                     
                     {isLoadingParkingSpots && (
                       <View style={{
-                        position: 'absolute',
+    position: 'absolute',
                         top: 0,
                         left: 0,
                         right: 0,
                         bottom: 0,
                         backgroundColor: colors.background + 'CC',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+      justifyContent: 'center',
+      alignItems: 'center',
                         borderRadius: 8,
                         pointerEvents: isLoadingParkingSpots ? 'auto' : 'none',
                       }}>

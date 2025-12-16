@@ -813,6 +813,7 @@ export class ApiService {
         timestamps: {
           bookingTime: string;
           startTime: string;
+          endTime: string | null;
         };
         bookingStatus: string;
         qrCode: string;
@@ -849,6 +850,7 @@ export class ApiService {
           timestamps: {
             bookingTime: string;
             startTime: string;
+            endTime: string | null;
           };
           bookingStatus: string;
           qrCode: string;

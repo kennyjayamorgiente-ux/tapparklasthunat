@@ -5,11 +5,11 @@ import { Platform, NativeModules } from 'react-native';
 export const API_CONFIG = {
   // Your computer's IP address (from ipconfig)
   // Update this if your IP changes
-  COMPUTER_IP: '10.196.47.232', // Updated to match detected IP
+  COMPUTER_IP: '10.237.135.232', // Updated to match detected IP
   
   // API Base URLs
   LOCALHOST: 'http://localhost:3001/api',
-  NETWORK: 'http://10.196.47.232:3001/api', // Updated to match detected IP
+  NETWORK: 'http://10.237.135.232:3001/api', // Updated to match detected IP
   
   // Current environment
   // Change this to 'network' when testing on physical device

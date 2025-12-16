@@ -816,8 +816,8 @@ const ActiveParkingScreen: React.FC = () => {
             console.log('📱 Booking data received - qrKey:', response.data.qrKey);
             setBookingData(response.data);
             
-            // If booking is already active, start timer immediately
-            if (response.data.bookingStatus === 'active' && response.data.timestamps.startTime) {
+            // If booking is already active (attendant) or occupied (IoT), start timer immediately
+            if ((response.data.bookingStatus === 'active' || response.data.bookingStatus === 'occupied') && response.data.timestamps.startTime) {
               const startTime = new Date(response.data.timestamps.startTime).getTime();
               parkingStartTime.current = startTime;
               setIsTimerRunning(true);
@@ -825,7 +825,7 @@ const ActiveParkingScreen: React.FC = () => {
               const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
               setElapsedTime(calculatedElapsed);
               setQrScanned(true);
-              console.log(`🟢 Booking already active - starting timer immediately with ${calculatedElapsed}s elapsed`);
+              console.log(`🟢 Booking already ${response.data.bookingStatus} - starting timer immediately with ${calculatedElapsed}s elapsed`);
             } else {
               // Set real parking start time from database (but don't start timer yet)
               if (response.data.timestamps.startTime) {
@@ -835,6 +835,31 @@ const ActiveParkingScreen: React.FC = () => {
               // Always start with timer off - wait for QR scan
               setElapsedTime(0);
               setIsTimerRunning(false);
+            }
+            
+            // If booking is already completed, show receipt
+            if (response.data.bookingStatus === 'completed' && response.data.timestamps.startTime) {
+              console.log('🔴 Booking already completed - showing receipt');
+              const startTime = new Date(response.data.timestamps.startTime).getTime();
+              const endTime = (response.data.timestamps as any).endTime ? new Date((response.data.timestamps as any).endTime).getTime() : Date.now();
+              const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
+              const durationHours = durationMinutes / 60;
+              
+              // Get subscription balance
+              ApiService.getSubscriptionBalance().then(balanceResponse => {
+                const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
+                setParkingEndDetails({
+                  durationMinutes,
+                  durationHours,
+                  chargeHours: durationHours,
+                  balanceHours: balanceHours,
+                  startTime: response.data.timestamps.startTime,
+                  endTime: (response.data.timestamps as any).endTime || new Date().toISOString(),
+                  areaName: response.data.parkingArea?.name || 'Unknown',
+                  spotNumber: response.data.parkingSlot?.spotNumber || 'Unknown'
+                });
+                setShowParkingEndModal(true);
+              });
             }
           } else {
             Alert.alert('Error', 'Failed to load booking details');
@@ -857,8 +882,8 @@ const ActiveParkingScreen: React.FC = () => {
               console.log('✅ Found active/reserved reservation:', activeReservation.reservationId, 'Status:', activeReservation.bookingStatus);
               setBookingData(activeReservation);
               
-              // If reservation is already active, start timer immediately
-              if (activeReservation.bookingStatus === 'active' && activeReservation.timestamps?.startTime) {
+              // If reservation is already active (attendant) or occupied (IoT), start timer immediately
+              if ((activeReservation.bookingStatus === 'active' || activeReservation.bookingStatus === 'occupied') && activeReservation.timestamps?.startTime) {
                 const startTime = new Date(activeReservation.timestamps.startTime).getTime();
                 parkingStartTime.current = startTime;
                 setIsTimerRunning(true);
@@ -866,10 +891,10 @@ const ActiveParkingScreen: React.FC = () => {
                 const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
                 setElapsedTime(calculatedElapsed);
                 setQrScanned(true);
-                console.log(`🟢 Reservation already active - starting timer immediately with ${calculatedElapsed}s elapsed`);
+                console.log(`🟢 Reservation already ${activeReservation.bookingStatus} - starting timer immediately with ${calculatedElapsed}s elapsed`);
               } else {
-                // Timer is now purely local - starts only when attendant scans
-                // Don't set parkingStartTime here - it will be set when attendant scans
+                // Timer will start when IoT device or attendant scans
+                // Don't set parkingStartTime here - it will be set when status changes
                 parkingStartTime.current = null;
                 setElapsedTime(0);
                 setIsTimerRunning(false);
@@ -948,7 +973,8 @@ const ActiveParkingScreen: React.FC = () => {
           try {
             const response = await ApiService.getBookingDetails(bookingData.reservationId);
             if (response.success && response.data) {
-              if (response.data.bookingStatus !== 'active' && response.data.bookingStatus !== 'reserved') {
+              // Keep data if status is reserved, active, or occupied
+              if (response.data.bookingStatus !== 'active' && response.data.bookingStatus !== 'reserved' && response.data.bookingStatus !== 'occupied') {
                 console.log('Reservation is no longer active, clearing data');
                 setBookingData(null);
                 setIsTimerRunning(false);
@@ -999,76 +1025,83 @@ const ActiveParkingScreen: React.FC = () => {
           const bookingData = response.data;
           console.log('📊 Current booking status:', bookingData);
 
-          // If attendant started the session and our timer isn't running
-          if (bookingData.bookingStatus === 'active' && !isTimerRunning && bookingData.timestamps.startTime) {
-            console.log('🟢 Attendant started session - syncing timer');
-            // Use current time as start time to ensure timer starts from 0
-            // This avoids delays from database time vs client time
-            const currentTime = Date.now();
-            parkingStartTime.current = currentTime;
+          // If IoT device or attendant started the session (status is 'active' or 'occupied') and our timer isn't running
+          if ((bookingData.bookingStatus === 'active' || bookingData.bookingStatus === 'occupied') && !isTimerRunning && bookingData.timestamps.startTime) {
+            const source = bookingData.bookingStatus === 'occupied' ? 'IoT Device' : 'Attendant';
+            console.log(`🟢 ${source} started session - syncing timer`);
+            // Use database start_time to ensure accurate duration calculation
+            const startTime = new Date(bookingData.timestamps.startTime).getTime();
+            parkingStartTime.current = startTime;
             setIsTimerRunning(true);
-            setElapsedTime(0); // Always start from 0 when first detected
+            // Calculate elapsed time from database start_time
+            const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
+            setElapsedTime(calculatedElapsed);
             setQrScanned(true);
-            console.log(`⏱️ Timer started from 0 at ${new Date(currentTime).toISOString()}`);
+            console.log(`⏱️ Timer started with ${calculatedElapsed}s elapsed at ${new Date(startTime).toISOString()}`);
           }
           
-          // If attendant ended the session and our timer is still running
-          if (bookingData.bookingStatus === 'completed' && isTimerRunning) {
-            console.log('🔴 Attendant ended session - stopping timer');
-            setIsTimerRunning(false);
-            setParkingEndTime(Date.now());
+          // If IoT device or attendant ended the session (status is 'completed')
+          if (bookingData.bookingStatus === 'completed') {
+            // Stop timer if it's still running
+            if (isTimerRunning) {
+              console.log('🔴 Session ended - stopping timer');
+              setIsTimerRunning(false);
+              setParkingEndTime(Date.now());
+            }
             
-            // Fetch parking end details
-            try {
-              const endDetailsResponse = await ApiService.getBookingDetails(bookingData.reservationId);
-              if (endDetailsResponse.success) {
-                const details = endDetailsResponse.data;
-                // Calculate duration
-                const startTime = new Date(details.timestamps.startTime);
-                const endTime = new Date();
+            // Fetch parking end details (only if we haven't shown the modal yet)
+            if (!showParkingEndModal) {
+              try {
+                const endDetailsResponse = await ApiService.getBookingDetails(bookingData.reservationId);
+                if (endDetailsResponse.success) {
+                  const details = endDetailsResponse.data;
+                  // Calculate duration from database timestamps
+                  const startTime = details.timestamps.startTime ? new Date(details.timestamps.startTime) : new Date();
+                  const endTime = (details.timestamps as any).endTime ? new Date((details.timestamps as any).endTime) : new Date();
+                  const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+                  // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
+                  const durationHours = durationMinutes / 60;
+                  
+                  // Wait a moment for backend to process the deduction, then get updated balance
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  
+                  // Get user's subscription balance AFTER deduction (balance should already be updated by backend)
+                  const balanceResponse = await ApiService.getSubscriptionBalance();
+                  const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
+                  
+                  setParkingEndDetails({
+                    durationMinutes,
+                    durationHours,
+                    chargeHours: durationHours, // Use decimal hours to match backend deduction
+                    balanceHours: balanceHours, // This is the balance AFTER deduction from backend
+                    startTime: startTime.toISOString(),
+                    endTime: endTime.toISOString(),
+                    areaName: details.parkingArea?.name || 'Unknown',
+                    spotNumber: details.parkingSlot?.spotNumber || 'Unknown'
+                  });
+                  setShowParkingEndModal(true);
+                }
+              } catch (error) {
+                console.error('Error fetching parking end details:', error);
+                // Still show modal with basic info
+                const startTime = bookingData.timestamps?.startTime ? new Date(bookingData.timestamps.startTime) : new Date();
+                const endTime = (bookingData.timestamps as any)?.endTime ? new Date((bookingData.timestamps as any).endTime) : new Date();
                 const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
                 // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
                 const durationHours = durationMinutes / 60;
-                
-                // Wait a moment for backend to process the deduction, then get updated balance
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Get user's subscription balance AFTER deduction (balance should already be updated by backend)
-                const balanceResponse = await ApiService.getSubscriptionBalance();
-                const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
                 
                 setParkingEndDetails({
                   durationMinutes,
                   durationHours,
                   chargeHours: durationHours, // Use decimal hours to match backend deduction
-                  balanceHours: balanceHours, // This is the balance AFTER deduction from backend
-                  startTime: details.timestamps.startTime,
+                  balanceHours: 0,
+                  startTime: startTime.toISOString(),
                   endTime: endTime.toISOString(),
-                  areaName: details.parkingArea?.name || 'Unknown',
-                  spotNumber: details.parkingSlot?.spotNumber || 'Unknown'
+                  areaName: bookingData.parkingArea?.name || 'Unknown',
+                  spotNumber: bookingData.parkingSlot?.spotNumber || 'Unknown'
                 });
                 setShowParkingEndModal(true);
               }
-            } catch (error) {
-              console.error('Error fetching parking end details:', error);
-              // Still show modal with basic info
-              const startTime = bookingData.timestamps?.startTime ? new Date(bookingData.timestamps.startTime) : new Date();
-              const endTime = new Date();
-              const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-              // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
-              const durationHours = durationMinutes / 60;
-              
-              setParkingEndDetails({
-                durationMinutes,
-                durationHours,
-                chargeHours: durationHours, // Use decimal hours to match backend deduction
-                balanceHours: 0,
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString(),
-                areaName: bookingData.parkingArea?.name || 'Unknown',
-                spotNumber: bookingData.parkingSlot?.spotNumber || 'Unknown'
-              });
-              setShowParkingEndModal(true);
             }
           }
         }
