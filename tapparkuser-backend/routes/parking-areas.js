@@ -71,30 +71,17 @@ router.get('/areas/:areaId/spots', async (req, res) => {
 
     // Filter by vehicle type if provided
     if (vehicleType) {
-      // Map vehicle types to spot types for compatibility (case-insensitive)
-      let normalizedVehicleType = vehicleType.toLowerCase().trim();
-      let spotType;
-      
-      // Map bicycle variants to bike
-      if (normalizedVehicleType === 'bicycle' || normalizedVehicleType === 'bike' || normalizedVehicleType === 'ebike') {
+      // Map vehicle types to spot types for compatibility
+      let spotType = vehicleType;
+      if (vehicleType === 'bicycle') {
         spotType = 'bike';
-      }
-      // Map car variants (should already be 'car')
-      else if (normalizedVehicleType === 'car' || normalizedVehicleType === 'automobile' || normalizedVehicleType === 'auto') {
-        spotType = 'car';
-      }
-      // Map motorcycle variants
-      else if (normalizedVehicleType === 'motorcycle' || normalizedVehicleType === 'motor' || normalizedVehicleType === 'moto') {
-        spotType = 'motorcycle';
-      }
-      // Default: use the normalized vehicle type as-is
-      else {
-        spotType = normalizedVehicleType;
+      } else if (vehicleType === 'ebike') {
+        spotType = 'bike';
       }
       
       console.log(`🔍 Filtering spots for vehicle type: ${vehicleType} -> spot type: ${spotType}`);
-      query += ` AND LOWER(TRIM(ps.spot_type)) = ?`;
-      params.push(spotType.toLowerCase());
+      query += ` AND ps.spot_type = ?`;
+      params.push(spotType);
     }
 
     query += ` ORDER BY ps.spot_number`;
@@ -367,7 +354,7 @@ router.post('/book', authenticateToken, async (req, res) => {
       };
       
       // Generate QR code as data URL
-      // The QR code contains only: qr_key and reservation_id
+      // The QR code contains only: qr_key
       const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
         width: 256,
         margin: 2,
@@ -705,8 +692,6 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
       JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
       WHERE r.reservation_id = ? AND r.user_id = ?
     `, [reservationId, req.user.user_id]);
-    
-    console.log('🔍 SQL Query result - bookingDetails[0]:', bookingDetails[0]);
 
     if (bookingDetails.length === 0) {
       return res.status(404).json({
@@ -716,9 +701,6 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
     }
 
     const booking = bookingDetails[0];
-    
-    console.log('🔍 Raw booking.qr_key from database:', booking.qr_key);
-    console.log('🔍 Type of booking.qr_key:', typeof booking.qr_key);
     
     // Ensure qr_key is a clean UUID string, not JSON
     let qrKey = booking.qr_key;
@@ -733,21 +715,16 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
           const parsed = JSON.parse(qrKey);
           // If it parsed to an object, it's not a valid UUID
           if (typeof parsed === 'object') {
-            console.warn('⚠️  qr_key contains JSON instead of UUID:', parsed);
             qrKey = null;
           }
         } catch (e) {
           // Parse failed but starts with {, still not valid
-          console.warn('⚠️  qr_key starts with { but is not valid JSON');
           qrKey = null;
         }
-      } else {
-        // Not JSON, use as is (should be UUID)
-        console.log('✅ qr_key appears to be valid (not JSON):', qrKey);
       }
-    } else {
-      console.warn('⚠️  qr_key is null or undefined in database for reservation:', reservationId);
+      // If not JSON, use as is (should be UUID)
     }
+    // If qrKey is null/undefined, it will be returned as null (no logging to reduce spam)
 
     // Check for penalty if reservation is completed
     let penaltyInfo = null;
@@ -804,8 +781,6 @@ router.get('/booking/:reservationId', authenticateToken, async (req, res) => {
         penaltyInfo: penaltyInfo
       }
     });
-    
-    console.log('📱 Booking details response - qrKey:', qrKey);
 
   } catch (error) {
     console.error('Get booking details error:', error);

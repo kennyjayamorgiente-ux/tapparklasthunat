@@ -12,6 +12,31 @@ console.log('🌍 API Base URL:', API_BASE_URL);
 // API Service for Tapparkuser Backend
 export class ApiService {
   private static baseURL = API_BASE_URL;
+  private static REQUEST_TIMEOUT = 15000; // 15 seconds timeout
+  
+  // Helper function to create a hash/mask of token for logging
+  private static getTokenHash(token: string): string {
+    if (!token || token.length < 8) return '***';
+    // Show first 4 and last 4 characters, mask the middle
+    const start = token.substring(0, 4);
+    const end = token.substring(token.length - 4);
+    const middle = '*'.repeat(Math.min(token.length - 8, 12));
+    return `${start}${middle}${end}`;
+  }
+  
+  // Helper function to add timeout to fetch
+  private static async fetchWithTimeout(
+    url: string,
+    config: RequestInit,
+    timeout: number = this.REQUEST_TIMEOUT
+  ): Promise<Response> {
+    return Promise.race([
+      fetch(url, config),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout: Server did not respond in time')), timeout)
+      ),
+    ]);
+  }
   
   private static buildUrl(endpoint: string): string {
     if (/^https?:\/\//i.test(endpoint)) {
@@ -37,12 +62,14 @@ export class ApiService {
 
     // Add Authorization header if token exists
     const token = await this.getStoredToken();
-    console.log('🔑 API Request - Token status:', token ? 'Token exists' : 'No token');
-    console.log('🌐 API Request - URL:', url);
-    
     if (token) {
+      const tokenHash = this.getTokenHash(token);
+      console.log('🔑 API Request - Token hash:', tokenHash);
+      console.log('🌐 API Request - URL:', url);
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     } else {
+      console.log('🔑 API Request - Token status: No token');
+      console.log('🌐 API Request - URL:', url);
       console.warn('⚠️ No authentication token found for API request to:', endpoint);
     }
 
@@ -57,7 +84,7 @@ export class ApiService {
     try {
       console.log(`📡 Attempting API request to: ${url}`);
       
-      const response = await fetch(url, config);
+      const response = await this.fetchWithTimeout(url, config);
       
       // Handle non-JSON responses (network errors, etc.)
       let data;
@@ -122,6 +149,8 @@ export class ApiService {
         errorString.includes('Failed to fetch') ||
         errorString.includes('Network request failed') ||
         errorString.includes('NetworkError') ||
+        errorMessage.includes('Request timeout') ||
+        errorMessage.includes('timeout') ||
         errorMessage.includes('fetch') ||
         errorMessage.includes('network') ||
         errorMessage.includes('ECONNREFUSED') ||
@@ -134,7 +163,14 @@ export class ApiService {
         console.error('   2. IP address is correct:', url);
         console.error('   3. Device and computer are on the same WiFi network');
         console.error('   4. Firewall allows connections on port 3000');
-        throw new Error(`Network error: Cannot reach server at ${this.baseURL}. Ensure backend is running and devices are on the same network.`);
+        
+        // Provide more specific error message based on error type
+        const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('Request timeout');
+        const errorMsg = isTimeout
+          ? `Connection timeout: Server at ${this.baseURL} did not respond. Check if backend is running.`
+          : `Network error: Cannot reach server at ${this.baseURL}. Ensure backend is running and devices are on the same network.`;
+        
+        throw new Error(errorMsg);
       }
       
       // Don't log authentication errors that are expected
@@ -611,21 +647,19 @@ export class ApiService {
   }
 
   static async getParkingSpots(areaId: number, vehicleType?: string, includeAll?: boolean) {
-    let url = `/parking-areas/areas/${areaId}/spots`;
-    const params: string[] = [];
-    
+    const query = new URLSearchParams();
     if (vehicleType) {
-      params.push(`vehicleType=${encodeURIComponent(vehicleType)}`);
+      query.append('vehicleType', vehicleType);
     }
-    
-    if (includeAll !== undefined) {
-      params.push(`includeAll=${includeAll}`);
+    if (includeAll) {
+      query.append('includeAll', 'true');
     }
-    
-    if (params.length > 0) {
-      url += `?${params.join('&')}`;
-    }
-    
+
+    const queryString = query.toString();
+    const url = queryString
+      ? `/parking-areas/areas/${areaId}/spots?${queryString}`
+      : `/parking-areas/areas/${areaId}/spots`;
+
     return this.request<{
       success: boolean;
       data: {
@@ -638,6 +672,22 @@ export class ApiService {
         }>;
       };
     }>(url);
+  }
+
+  static async getParkingSpotsStatus(areaId: number) {
+    return this.request<{
+      success: boolean;
+      data: {
+        spots: Array<{
+          id: number;
+          spot_number: string;
+          status: string;
+          spot_type: string;
+          section_name: string;
+          is_user_booked?: boolean | number; // Indicates if current user has booked this spot
+        }>;
+      };
+    }>(`/parking-areas/areas/${areaId}/spots-status`);
   }
 
   static async bookParkingSpot(vehicleId: number, spotId: number, areaId: number) {
@@ -806,6 +856,7 @@ export class ApiService {
           location: string;
         };
         parkingSlot: {
+          parkingSpotId: number;
           spotNumber: string;
           spotType: string;
           sectionName: string;
@@ -813,11 +864,9 @@ export class ApiService {
         timestamps: {
           bookingTime: string;
           startTime: string;
-          endTime: string | null;
         };
         bookingStatus: string;
         qrCode: string;
-        qrKey: string;
       };
     }>(`/parking-areas/booking/${reservationId}?t=${timestamp}`);
   }
@@ -850,7 +899,6 @@ export class ApiService {
           timestamps: {
             bookingTime: string;
             startTime: string;
-            endTime: string | null;
           };
           bookingStatus: string;
           qrCode: string;
@@ -1146,6 +1194,9 @@ export class ApiService {
         startTime: string;
         endTime: string;
         durationMinutes: number;
+        durationHours: number;
+        chargeHours: number;
+        balanceHours: number;
         status: string;
       };
     }>('/attendant/end-parking-session', {
@@ -1194,19 +1245,90 @@ export class ApiService {
     }>('/attendant/scan-history');
   }
 
+  // Admin: Create guest booking
+  static async createGuestBooking(bookingData: {
+    spotId: number;
+    guestName: string;
+    plateNumber: string;
+    vehicleType: string;
+    brand?: string;
+    model?: string;
+    color?: string;
+  }) {
+    return this.request<{
+      success: boolean;
+      message: string;
+      data: {
+        reservationId: number;
+        qrCode: string;
+        bookingDetails: {
+          reservationId: number;
+          qrCode: string;
+          guestName: string;
+          vehiclePlate: string;
+          vehicleType: string;
+          vehicleBrand: string;
+          areaName: string;
+          areaLocation: string;
+          spotNumber: string;
+          spotType: string;
+          status: string;
+          isGuest: boolean;
+        };
+      };
+    }>('/attendant/create-guest-booking', {
+      method: 'POST',
+      body: JSON.stringify(bookingData),
+    });
+  }
+
+  // Admin/Attendant: End parking session
+  static async endParkingSessionByAdmin(reservationId: number) {
+    return this.request<{
+      success: boolean;
+      message: string;
+      data: {
+        reservationId: number;
+        status: string;
+        spotFreed: boolean;
+      };
+    }>(`/attendant/end-parking-session/${reservationId}`, {
+      method: 'PUT',
+    });
+  }
+
+  // Admin/Attendant: Cancel booking
+  static async cancelBookingByAdmin(reservationId: number) {
+    return this.request<{
+      success: boolean;
+      message: string;
+      data: {
+        reservationId: number;
+        status: string;
+        spotFreed: boolean;
+      };
+    }>(`/attendant/cancel-booking/${reservationId}`, {
+      method: 'PUT',
+    });
+  }
+
   // Parking Layout API Methods
   static async getParkingAreaLayout(areaId: number) {
+    // Add cache-busting timestamp to ensure fresh data
+    const timestamp = Date.now();
     return this.request<{
       success: boolean;
       data: {
         areaId: number;
         areaName: string;
         location: string;
+        layoutId: number | null;
         layoutName: string;
         layoutSvg: string;
         hasLayout: boolean;
+        floor?: number;
       };
-    }>(`/parking-areas/area/${areaId}/layout`);
+    }>(`/parking-areas/area/${areaId}/layout?t=${timestamp}`);
   }
 
   static async getParkingLayouts() {

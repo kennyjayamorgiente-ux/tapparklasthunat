@@ -23,6 +23,7 @@ import { getActiveParkingScreenStyles } from '../styles/activeParkingScreenStyle
 import { useThemeColors, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import ApiService from '../../services/api';
+import { useScreenDimensions, getAdaptiveSize, getAdaptiveFontSize, getAdaptivePadding, getAdaptiveSpacing } from '../../hooks/use-screen-dimensions';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -84,6 +85,7 @@ const ActiveParkingScreen: React.FC = () => {
   const { isDarkMode } = useTheme();
   const { isAuthenticated } = useAuth();
   const activeParkingScreenStyles = getActiveParkingScreenStyles(colors);
+  const screenDimensions = useScreenDimensions();
   const [activeTab, setActiveTab] = useState('ticket');
   
   // Booking data state
@@ -813,11 +815,10 @@ const ActiveParkingScreen: React.FC = () => {
           // Try to get booking details by reservation ID
           const response = await ApiService.getBookingDetails(Number(reservationId));
           if (response.success) {
-            console.log('📱 Booking data received - qrKey:', response.data.qrKey);
             setBookingData(response.data);
             
-            // If booking is already active (attendant) or occupied (IoT), start timer immediately
-            if ((response.data.bookingStatus === 'active' || response.data.bookingStatus === 'occupied') && response.data.timestamps.startTime) {
+            // If booking is already active, start timer immediately
+            if (response.data.bookingStatus === 'active' && response.data.timestamps.startTime) {
               const startTime = new Date(response.data.timestamps.startTime).getTime();
               parkingStartTime.current = startTime;
               setIsTimerRunning(true);
@@ -825,7 +826,7 @@ const ActiveParkingScreen: React.FC = () => {
               const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
               setElapsedTime(calculatedElapsed);
               setQrScanned(true);
-              console.log(`🟢 Booking already ${response.data.bookingStatus} - starting timer immediately with ${calculatedElapsed}s elapsed`);
+              console.log(`🟢 Booking already active - starting timer immediately with ${calculatedElapsed}s elapsed`);
             } else {
               // Set real parking start time from database (but don't start timer yet)
               if (response.data.timestamps.startTime) {
@@ -835,31 +836,6 @@ const ActiveParkingScreen: React.FC = () => {
               // Always start with timer off - wait for QR scan
               setElapsedTime(0);
               setIsTimerRunning(false);
-            }
-            
-            // If booking is already completed, show receipt
-            if (response.data.bookingStatus === 'completed' && response.data.timestamps.startTime) {
-              console.log('🔴 Booking already completed - showing receipt');
-              const startTime = new Date(response.data.timestamps.startTime).getTime();
-              const endTime = (response.data.timestamps as any).endTime ? new Date((response.data.timestamps as any).endTime).getTime() : Date.now();
-              const durationMinutes = Math.ceil((endTime - startTime) / (1000 * 60));
-              const durationHours = durationMinutes / 60;
-              
-              // Get subscription balance
-              ApiService.getSubscriptionBalance().then(balanceResponse => {
-                const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
-                setParkingEndDetails({
-                  durationMinutes,
-                  durationHours,
-                  chargeHours: durationHours,
-                  balanceHours: balanceHours,
-                  startTime: response.data.timestamps.startTime,
-                  endTime: (response.data.timestamps as any).endTime || new Date().toISOString(),
-                  areaName: response.data.parkingArea?.name || 'Unknown',
-                  spotNumber: response.data.parkingSlot?.spotNumber || 'Unknown'
-                });
-                setShowParkingEndModal(true);
-              });
             }
           } else {
             Alert.alert('Error', 'Failed to load booking details');
@@ -882,8 +858,8 @@ const ActiveParkingScreen: React.FC = () => {
               console.log('✅ Found active/reserved reservation:', activeReservation.reservationId, 'Status:', activeReservation.bookingStatus);
               setBookingData(activeReservation);
               
-              // If reservation is already active (attendant) or occupied (IoT), start timer immediately
-              if ((activeReservation.bookingStatus === 'active' || activeReservation.bookingStatus === 'occupied') && activeReservation.timestamps?.startTime) {
+              // If reservation is already active, start timer immediately
+              if (activeReservation.bookingStatus === 'active' && activeReservation.timestamps?.startTime) {
                 const startTime = new Date(activeReservation.timestamps.startTime).getTime();
                 parkingStartTime.current = startTime;
                 setIsTimerRunning(true);
@@ -891,10 +867,10 @@ const ActiveParkingScreen: React.FC = () => {
                 const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
                 setElapsedTime(calculatedElapsed);
                 setQrScanned(true);
-                console.log(`🟢 Reservation already ${activeReservation.bookingStatus} - starting timer immediately with ${calculatedElapsed}s elapsed`);
+                console.log(`🟢 Reservation already active - starting timer immediately with ${calculatedElapsed}s elapsed`);
               } else {
-                // Timer will start when IoT device or attendant scans
-                // Don't set parkingStartTime here - it will be set when status changes
+                // Timer is now purely local - starts only when attendant scans
+                // Don't set parkingStartTime here - it will be set when attendant scans
                 parkingStartTime.current = null;
                 setElapsedTime(0);
                 setIsTimerRunning(false);
@@ -951,31 +927,55 @@ const ActiveParkingScreen: React.FC = () => {
     }
   }, [isTimerRunning, parkingStartTime.current, totalParkingTime, progressAnim]);
 
-  // Clear data when component unmounts
-  useEffect(() => {
-    return () => {
-      // Clear all data when leaving the screen
-      setBookingData(null);
-      setIsTimerRunning(false);
-      setElapsedTime(0);
-      setParkingEndTime(null);
-      setQrScanned(false);
-      parkingStartTime.current = null;
-    };
-  }, []);
-
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      // Check if we have booking data and verify it's still active
-      if (bookingData) {
-        const checkActiveStatus = async () => {
-          try {
-            const response = await ApiService.getBookingDetails(bookingData.reservationId);
+      const refreshBookingData = async () => {
+        try {
+          // Get reservation ID from params (passed from HomeScreen)
+          const reservationId = params.reservationId || params.sessionId;
+          
+          let targetReservationId: number | null = null;
+          
+          if (reservationId) {
+            // Use reservation ID from params
+            targetReservationId = Number(reservationId);
+          } else {
+            // No params, try to find active booking
+            const bookingsResponse = await ApiService.getMyBookings();
+            if (bookingsResponse.success && bookingsResponse.data.bookings.length > 0) {
+              const activeReservation = bookingsResponse.data.bookings.find(
+                (booking: any) => booking.bookingStatus === 'active' || booking.bookingStatus === 'reserved'
+              );
+              
+              if (activeReservation) {
+                targetReservationId = activeReservation.reservationId;
+              }
+            }
+          }
+          
+          // If we have a reservation ID, fetch full booking details (includes qrKey)
+          if (targetReservationId) {
+            const response = await ApiService.getBookingDetails(targetReservationId);
             if (response.success && response.data) {
-              // Keep data if status is reserved, active, or occupied
-              if (response.data.bookingStatus !== 'active' && response.data.bookingStatus !== 'reserved' && response.data.bookingStatus !== 'occupied') {
-                console.log('Reservation is no longer active, clearing data');
+              // Update booking data with fresh data (includes qrKey)
+              setBookingData(response.data);
+              
+              // Update timer state if booking is active
+              if (response.data.bookingStatus === 'active' && response.data.timestamps?.startTime) {
+                const startTime = new Date(response.data.timestamps.startTime).getTime();
+                parkingStartTime.current = startTime;
+                setIsTimerRunning(true);
+                const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
+                setElapsedTime(calculatedElapsed);
+                setQrScanned(true);
+              } else if (response.data.bookingStatus === 'reserved') {
+                // Booking is reserved but not active yet
+                setIsTimerRunning(false);
+                setElapsedTime(0);
+                setQrScanned(false);
+              } else {
+                // Booking is completed or cancelled
                 setBookingData(null);
                 setIsTimerRunning(false);
                 setElapsedTime(0);
@@ -984,14 +984,20 @@ const ActiveParkingScreen: React.FC = () => {
                 parkingStartTime.current = null;
               }
             }
-          } catch (error) {
-            console.error('Error checking reservation status:', error);
+          } else if (bookingData?.reservationId) {
+            // Fallback: if we have booking data but couldn't find it, try to refresh it
+            const response = await ApiService.getBookingDetails(bookingData.reservationId);
+            if (response.success && response.data) {
+              setBookingData(response.data);
+            }
           }
-        };
-        
-        checkActiveStatus();
-      }
-    }, [bookingData])
+        } catch (error) {
+          console.error('Error refreshing booking data:', error);
+        }
+      };
+      
+      refreshBookingData();
+    }, [params.reservationId, params.sessionId])
   );
 
   // Real-time polling to sync with attendant actions
@@ -1025,69 +1031,63 @@ const ActiveParkingScreen: React.FC = () => {
           const bookingData = response.data;
           console.log('📊 Current booking status:', bookingData);
 
-          // If IoT device or attendant started the session (status is 'active' or 'occupied') and our timer isn't running
-          if ((bookingData.bookingStatus === 'active' || bookingData.bookingStatus === 'occupied') && !isTimerRunning && bookingData.timestamps.startTime) {
-            const source = bookingData.bookingStatus === 'occupied' ? 'IoT Device' : 'Attendant';
-            console.log(`🟢 ${source} started session - syncing timer`);
-            // Use database start_time to ensure accurate duration calculation
-            const startTime = new Date(bookingData.timestamps.startTime).getTime();
-            parkingStartTime.current = startTime;
+          // If attendant started the session and our timer isn't running
+          if (bookingData.bookingStatus === 'active' && !isTimerRunning && bookingData.timestamps.startTime) {
+            console.log('🟢 Attendant started session - syncing timer');
+            // Use current time as start time to ensure timer starts from 0
+            // This avoids delays from database time vs client time
+            const currentTime = Date.now();
+            parkingStartTime.current = currentTime;
             setIsTimerRunning(true);
-            // Calculate elapsed time from database start_time
-            const calculatedElapsed = Math.floor((Date.now() - startTime) / 1000);
-            setElapsedTime(calculatedElapsed);
+            setElapsedTime(0); // Always start from 0 when first detected
             setQrScanned(true);
-            console.log(`⏱️ Timer started with ${calculatedElapsed}s elapsed at ${new Date(startTime).toISOString()}`);
+            console.log(`⏱️ Timer started from 0 at ${new Date(currentTime).toISOString()}`);
           }
           
-          // If IoT device or attendant ended the session (status is 'completed')
-          if (bookingData.bookingStatus === 'completed') {
-            // Stop timer if it's still running
-            if (isTimerRunning) {
-              console.log('🔴 Session ended - stopping timer');
-              setIsTimerRunning(false);
-              setParkingEndTime(Date.now());
-            }
+          // If attendant ended the session and our timer is still running
+          if (bookingData.bookingStatus === 'completed' && isTimerRunning) {
+            console.log('🔴 Attendant ended session - stopping timer');
+            setIsTimerRunning(false);
+            setParkingEndTime(Date.now());
             
-            // Fetch parking end details (only if we haven't shown the modal yet)
-            if (!showParkingEndModal) {
-              try {
-                const endDetailsResponse = await ApiService.getBookingDetails(bookingData.reservationId);
-                if (endDetailsResponse.success) {
-                  const details = endDetailsResponse.data;
-                  // Calculate duration from database timestamps
-                  const startTime = details.timestamps.startTime ? new Date(details.timestamps.startTime) : new Date();
-                  const endTime = (details.timestamps as any).endTime ? new Date((details.timestamps as any).endTime) : new Date();
-                  const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-                  // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
-                  const durationHours = durationMinutes / 60;
-                  
-                  // Wait a moment for backend to process the deduction, then get updated balance
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  
-                  // Get user's subscription balance AFTER deduction (balance should already be updated by backend)
-                  const balanceResponse = await ApiService.getSubscriptionBalance();
-                  const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
-                  
-                  // Check for penalty information from booking details
+            // Fetch parking end details
+            try {
+              const endDetailsResponse = await ApiService.getBookingDetails(bookingData.reservationId);
+              if (endDetailsResponse.success) {
+                const details = endDetailsResponse.data;
+                // Calculate duration
+                const startTime = new Date(details.timestamps.startTime);
+                const endTime = new Date();
+                const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+                // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
+                const durationHours = durationMinutes / 60;
+                
+                // Wait a moment for backend to process the deduction, then get updated balance
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Get user's subscription balance AFTER deduction (balance should already be updated by backend)
+                const balanceResponse = await ApiService.getSubscriptionBalance();
+                const balanceHours = balanceResponse.success ? balanceResponse.data.total_hours_remaining : 0;
+                
+                // Check for penalty information from booking details
                 const penaltyInfo = details.penaltyInfo || null;
                 const hasPenalty = penaltyInfo?.hasPenalty || false;
                 const penaltyHours = penaltyInfo?.penaltyHours || 0;
 
                 setParkingEndDetails({
-                    durationMinutes,
-                    durationHours,
-                    chargeHours: durationHours, // Use decimal hours to match backend deduction
-                    balanceHours: balanceHours, // This is the balance AFTER deduction from backend
-                    startTime: startTime.toISOString(),
-                    endTime: endTime.toISOString(),
-                    areaName: details.parkingArea?.name || 'Unknown',
-                    spotNumber: details.parkingSlot?.spotNumber || 'Unknown',
+                  durationMinutes,
+                  durationHours,
+                  chargeHours: durationHours, // Use decimal hours to match backend deduction
+                  balanceHours: balanceHours, // This is the balance AFTER deduction from backend
+                  startTime: details.timestamps.startTime,
+                  endTime: endTime.toISOString(),
+                  areaName: details.parkingArea?.name || 'Unknown',
+                  spotNumber: details.parkingSlot?.spotNumber || 'Unknown',
                   hasPenalty: hasPenalty,
                   penaltyHours: penaltyHours
-                  });
-                  setShowParkingEndModal(true);
-  
+                });
+                setShowParkingEndModal(true);
+
                 // Show alert if there's a penalty
                 if (hasPenalty && penaltyHours > 0) {
                   const penaltyHoursFormatted = Math.floor(penaltyHours);
@@ -1099,27 +1099,26 @@ const ActiveParkingScreen: React.FC = () => {
                   );
                 }
               }
-              } catch (error) {
-                console.error('Error fetching parking end details:', error);
-                // Still show modal with basic info
-                const startTime = bookingData.timestamps?.startTime ? new Date(bookingData.timestamps.startTime) : new Date();
-                const endTime = (bookingData.timestamps as any)?.endTime ? new Date((bookingData.timestamps as any).endTime) : new Date();
-                const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-                // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
-                const durationHours = durationMinutes / 60;
-                
-                setParkingEndDetails({
-                  durationMinutes,
-                  durationHours,
-                  chargeHours: durationHours, // Use decimal hours to match backend deduction
-                  balanceHours: 0,
-                  startTime: startTime.toISOString(),
-                  endTime: endTime.toISOString(),
-                  areaName: bookingData.parkingArea?.name || 'Unknown',
-                  spotNumber: bookingData.parkingSlot?.spotNumber || 'Unknown'
-                });
-                setShowParkingEndModal(true);
-              }
+            } catch (error) {
+              console.error('Error fetching parking end details:', error);
+              // Still show modal with basic info
+              const startTime = bookingData.timestamps?.startTime ? new Date(bookingData.timestamps.startTime) : new Date();
+              const endTime = new Date();
+              const durationMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+              // Convert to decimal hours (e.g., 30 minutes = 0.50 hours, 90 minutes = 1.50 hours)
+              const durationHours = durationMinutes / 60;
+              
+              setParkingEndDetails({
+                durationMinutes,
+                durationHours,
+                chargeHours: durationHours, // Use decimal hours to match backend deduction
+                balanceHours: 0,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                areaName: bookingData.parkingArea?.name || 'Unknown',
+                spotNumber: bookingData.parkingSlot?.spotNumber || 'Unknown'
+              });
+              setShowParkingEndModal(true);
             }
           }
         }
@@ -1407,99 +1406,90 @@ const ActiveParkingScreen: React.FC = () => {
             {/* QR Code Section - Real QR Code Display */}
             <View style={activeParkingScreenStyles.qrSection}>
               <View style={activeParkingScreenStyles.qrContainer}>
-                {bookingData ? (
-                  <View>
-                    <QRCode
-                      value={(() => {
-                        // Debug: Log the raw bookingData.qrKey value
-                        console.log('🔍 Raw bookingData.qrKey:', bookingData.qrKey);
-                        console.log('🔍 Type of qrKey:', typeof bookingData.qrKey);
-                        
-                        // Validate and clean qrKey - ensure it's a string, not JSON
-                        let qrKey: string | null = null;
-                        
-                        if (bookingData.qrKey !== null && bookingData.qrKey !== undefined && bookingData.qrKey !== '') {
-                          const rawKey = String(bookingData.qrKey).trim();
-                          console.log('🔍 Raw key after String() and trim():', rawKey);
-                          
-                          // Check if it's JSON (starts with { or [)
-                          if (rawKey.startsWith('{') || rawKey.startsWith('[')) {
-                            try {
-                              const parsed = JSON.parse(rawKey);
-                              // If it parsed to an object, it's not a valid UUID - skip it
-                              console.warn('⚠️  qrKey contains JSON instead of UUID:', parsed);
-                              qrKey = null;
-                            } catch (e) {
-                              // Parse failed but starts with {, still not valid
-                              console.warn('⚠️  qrKey starts with { but is not valid JSON');
-                              qrKey = null;
-                            }
-                          } else {
-                            // Not JSON - use it as is (should be UUID string)
-                            qrKey = rawKey;
-                            console.log('✅ Using qrKey:', qrKey);
-                          }
-                        } else {
-                          console.error('❌ bookingData.qrKey is null, undefined, or empty');
-                          console.error('❌ Full bookingData:', JSON.stringify(bookingData, null, 2));
-                        }
-                        
-                        // Build QR data - only include qr_key
-                        if (!qrKey) {
-                          console.error('❌ No valid qr_key available for QR code');
-                          console.error('❌ This reservation may not have a qr_key in the database');
-                          // Don't generate QR code with invalid data - return empty string
-                          // The UI should handle this case
-                          return '';
-                        }
-                        
-                        const qrData = {
-                          qr_key: qrKey
-                        };
-                        
-                        const qrString = JSON.stringify(qrData);
-                        console.log('📱 QR Code Data (qr_key only):', qrString);
-                        return qrString;
-                      })()}
-                      size={(() => {
-                        // Enlarged responsive QR code size based on screen width
-                        if (screenWidth < 375) return screenWidth * 0.75; // Small screens - increased from 0.6
-                        if (screenWidth < 414) return screenWidth * 0.8; // Medium screens - increased from 0.65
-                        if (screenWidth < 768) return Math.min(300, screenWidth * 0.75); // Large phones - increased from 240/0.6
-                        if (screenWidth < 1024) return Math.min(400, screenWidth * 0.5); // Tablets - increased from 280/0.4
-                        return Math.min(450, screenWidth * 0.45); // Large tablets - increased from 320/0.35
-                      })()}
-                      color="black"
-                      backgroundColor="white"
-                      logoSize={(() => {
-                        // Enlarged responsive logo size
-                        if (screenWidth < 375) return 30; // increased from 24
-                        if (screenWidth < 414) return 35; // increased from 28
-                        if (screenWidth < 768) return 40; // increased from 30
-                        if (screenWidth < 1024) return 50; // increased from 35
-                        return 60; // increased from 40
-                      })()}
-                      logoMargin={2}
-                      logoBorderRadius={15}
-                      quietZone={isSmallScreen ? 8 : 10}
-                    />
-                  </View>
-                ) : (
-                <View style={activeParkingScreenStyles.qrPlaceholder}>
-                  <Text style={activeParkingScreenStyles.qrPlaceholderEmoji}>📱</Text>
-                  <Text style={activeParkingScreenStyles.qrPlaceholderText}>QR Code</Text>
-                    <Text style={activeParkingScreenStyles.qrPlaceholderSubtext}>
-                      {bookingData ? 'No QR Code Data' : 'Loading...'}
-                    </Text>
-                </View>
-                )}
+                {(() => {
+                  // Validate and clean qrKey - ensure it's a string, not JSON
+                  let qrKey: string | null = null;
+                  
+                  // Debug logging
+                  console.log('🔍 QR Code Debug - bookingData:', bookingData ? 'exists' : 'null');
+                  console.log('🔍 QR Code Debug - bookingData.qrKey:', bookingData?.qrKey);
+                  
+                  if (bookingData?.qrKey !== null && bookingData?.qrKey !== undefined && bookingData?.qrKey !== '') {
+                    const rawKey = String(bookingData.qrKey).trim();
+                    console.log('🔍 QR Code Debug - rawKey:', rawKey);
+                    
+                    // Check if it's JSON (starts with { or [)
+                    if (rawKey.startsWith('{') || rawKey.startsWith('[')) {
+                      try {
+                        const parsed = JSON.parse(rawKey);
+                        // If it parsed to an object, it's not a valid UUID - skip it
+                        console.log('⚠️ QR Code Debug - qrKey appears to be JSON, rejecting');
+                        qrKey = null;
+                      } catch (e) {
+                        // Parse failed but starts with {, still not valid
+                        console.log('⚠️ QR Code Debug - qrKey parse failed, rejecting');
+                        qrKey = null;
+                      }
+                    } else {
+                      // Not JSON - use it as is (should be UUID string)
+                      qrKey = rawKey;
+                      console.log('✅ QR Code Debug - Valid qrKey found:', qrKey);
+                    }
+                  } else {
+                    console.log('❌ QR Code Debug - No qrKey found in bookingData');
+                  }
+                  
+                  // Only render QRCode if we have a valid qrKey
+                  if (qrKey) {
+                    // Generate QR code data with only qr_key (matches backend implementation)
+                    // IMPORTANT: Only qr_key is included in the QR code for validation
+                    const qrData = {
+                      qr_key: qrKey
+                    };
+                    const qrString = JSON.stringify(qrData);
+                    
+                    return (
+                      <QRCode
+                        value={qrString}
+                        size={(() => {
+                          const smallestDim = Math.min(screenDimensions.width, screenDimensions.height);
+                          // Responsive QR code size based on smallest dimension - Enlarged for better visibility
+                          if (smallestDim < 375) return smallestDim * 0.75;
+                          if (smallestDim < 414) return smallestDim * 0.8;
+                          if (smallestDim < 768) return Math.min(300, smallestDim * 0.75);
+                          if (smallestDim < 1024) return Math.min(350, smallestDim * 0.5);
+                          return Math.min(400, smallestDim * 0.45);
+                        })()}
+                        color="black"
+                        backgroundColor="white"
+                        logoSize={(() => {
+                          const smallestDim = Math.min(screenDimensions.width, screenDimensions.height);
+                          if (smallestDim < 375) return 30;
+                          if (smallestDim < 414) return 35;
+                          if (smallestDim < 768) return 40;
+                          if (smallestDim < 1024) return 50;
+                          return 60;
+                        })()}
+                        logoMargin={2}
+                        logoBorderRadius={15}
+                        quietZone={10}
+                      />
+                    );
+                  } else {
+                    // Show placeholder when qrKey is missing
+                    return (
+                      <View style={activeParkingScreenStyles.qrPlaceholder}>
+                        <Text style={activeParkingScreenStyles.qrPlaceholderEmoji}>📱</Text>
+                        <Text style={activeParkingScreenStyles.qrPlaceholderText}>QR Code</Text>
+                        <Text style={activeParkingScreenStyles.qrPlaceholderSubtext}>
+                          {bookingData ? 'QR key not available. This reservation may not have a qr_key in the database.' : 'Loading...'}
+                        </Text>
+                      </View>
+                    );
+                  }
+                })()}
               </View>
-              <Text 
-                style={activeParkingScreenStyles.qrInstruction}
-                numberOfLines={2}
-                adjustsFontSizeToFit={true}
-                minimumFontScale={0.8}
-              >
+              <Text style={activeParkingScreenStyles.qrInstruction}>
                 {!isTimerRunning ? 'Waiting for attendant to start parking session...' : 
                  'Parking session is active. Attendant will end the session.'}
               </Text>
@@ -1513,39 +1503,20 @@ const ActiveParkingScreen: React.FC = () => {
               <View style={activeParkingScreenStyles.detailsColumn}>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Display Name</Text>
-                  <Text 
-                    style={activeParkingScreenStyles.detailValue}
-                    numberOfLines={2}
-                    adjustsFontSizeToFit={true}
-                    minimumFontScale={0.85}
-                  >
-                    {bookingData.displayName}
-                  </Text>
+                  <Text style={activeParkingScreenStyles.detailValue}>{bookingData?.displayName || 'N/A'}</Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Parking Area</Text>
-                  <Text 
-                    style={activeParkingScreenStyles.detailValue}
-                    numberOfLines={2}
-                    adjustsFontSizeToFit={true}
-                    minimumFontScale={0.85}
-                  >
-                    {bookingData.parkingArea.name}
-                  </Text>
+                  <Text style={activeParkingScreenStyles.detailValue}>{bookingData?.parkingArea?.name || 'N/A'}</Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Date</Text>
-                  <Text 
-                    style={activeParkingScreenStyles.detailValue}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit={true}
-                    minimumFontScale={0.85}
-                  >
-                    {new Date(bookingData.timestamps.bookingTime).toLocaleDateString('en-US', {
+                  <Text style={activeParkingScreenStyles.detailValue}>
+                    {bookingData?.timestamps?.bookingTime ? new Date(bookingData.timestamps.bookingTime).toLocaleDateString('en-US', {
                       month: '2-digit',
                       day: '2-digit',
                       year: '2-digit'
-                    })}
+                    }) : 'N/A'}
                   </Text>
                 </View>
               </View>
@@ -1553,36 +1524,23 @@ const ActiveParkingScreen: React.FC = () => {
               <View style={activeParkingScreenStyles.detailsColumn}>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Vehicle Detail</Text>
-                  <Text 
-                    style={activeParkingScreenStyles.detailValue}
-                    numberOfLines={2}
-                    adjustsFontSizeToFit={true}
-                    minimumFontScale={0.85}
-                  >
-                    {bookingData.vehicleDetails.brand} - {bookingData.vehicleDetails.vehicleType}
+                  <Text style={activeParkingScreenStyles.detailValue}>
+                    {bookingData?.vehicleDetails?.brand && bookingData?.vehicleDetails?.vehicleType 
+                      ? `${bookingData.vehicleDetails.brand} - ${bookingData.vehicleDetails.vehicleType}`
+                      : 'N/A'}
                   </Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Parking Slot</Text>
-                  <Text 
-                    style={activeParkingScreenStyles.detailValue}
-                    numberOfLines={2}
-                    adjustsFontSizeToFit={true}
-                    minimumFontScale={0.85}
-                  >
-                    {bookingData.parkingSlot.spotNumber} ({bookingData.parkingSlot.spotType})
+                  <Text style={activeParkingScreenStyles.detailValue}>
+                    {bookingData?.parkingSlot?.spotNumber && bookingData?.parkingSlot?.spotType
+                      ? `${bookingData.parkingSlot.spotNumber} (${bookingData.parkingSlot.spotType})`
+                      : 'N/A'}
                   </Text>
                 </View>
                 <View style={activeParkingScreenStyles.detailRow}>
                   <Text style={activeParkingScreenStyles.detailLabel}>Plate Number</Text>
-                  <Text 
-                    style={activeParkingScreenStyles.detailValue}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit={true}
-                    minimumFontScale={0.85}
-                  >
-                    {bookingData.vehicleDetails.plateNumber}
-                  </Text>
+                  <Text style={activeParkingScreenStyles.detailValue}>{bookingData?.vehicleDetails?.plateNumber || 'N/A'}</Text>
                 </View>
               </View>
             </View>

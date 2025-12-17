@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const { logUserActivity, ActionTypes } = require('../utils/userLogger');
+const bcrypt = require('bcryptjs');
+const QRCode = require('qrcode');
 
 // Get vehicle types with occupied, vacant, and total capacity
 router.get('/vehicle-types', authenticateToken, async (req, res) => {
@@ -202,11 +204,23 @@ router.get('/parking-slot/:slotId', authenticateToken, async (req, res) => {
         ps.status,
         psec.section_name as section,
         pa.parking_area_name as areaName,
-        pa.location
+        pa.location,
+        r.reservation_id,
+        r.booking_status,
+        CONCAT(u.first_name, ' ', u.last_name) as reserved_by_name,
+        v.plate_number as reserved_plate_number,
+        u.email as reserved_by_email
       FROM parking_spot ps
       INNER JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
       INNER JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+      LEFT JOIN reservations r ON ps.parking_spot_id = r.parking_spots_id 
+        AND r.booking_status IN ('reserved', 'active')
+        AND r.end_time IS NULL
+      LEFT JOIN users u ON r.user_id = u.user_id
+      LEFT JOIN vehicles v ON r.vehicle_id = v.vehicle_id
       WHERE ps.parking_spot_id = ? AND pa.status = 'active'
+      ORDER BY r.time_stamp DESC
+      LIMIT 1
     `;
 
     const results = await db.query(query, [slotId]);
@@ -229,8 +243,15 @@ router.get('/parking-slot/:slotId', authenticateToken, async (req, res) => {
       status: slot.status,
       section: slot.section,
       areaName: slot.areaName,
-      location: slot.location
+      location: slot.location,
+      reservedBy: slot.reserved_by_name || null,
+      reservedPlateNumber: slot.reserved_plate_number || null,
+      reservedByEmail: slot.reserved_by_email || null,
+      reservationId: slot.reservation_id || null,
+      bookingStatus: slot.booking_status || null
     };
+    
+    console.log('📊 Formatted slot details:', slotDetails);
 
     res.json({
       success: true,
@@ -927,6 +948,457 @@ router.get('/scan-history', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch scan history',
+      error: error.message
+    });
+  }
+});
+
+// Admin: Create guest booking for available parking spot
+router.post('/create-guest-booking', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    const userCheck = await db.query(`
+      SELECT u.user_id, u.user_type_id, t.account_type_name
+      FROM users u
+      LEFT JOIN types t ON u.user_type_id = t.type_id
+      WHERE u.user_id = ?
+    `, [req.user.user_id]);
+
+    if (userCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Allow both Admin and Attendant to create guest bookings
+    const isAdminOrAttendant = userCheck[0].account_type_name === 'Admin' || 
+                               userCheck[0].account_type_name === 'Attendant' || 
+                               userCheck[0].user_type_id === 3 || 
+                               userCheck[0].user_type_id === 2;
+    if (!isAdminOrAttendant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin or Attendant access required'
+      });
+    }
+
+    const { spotId, guestName, plateNumber, vehicleType, brand, model, color } = req.body;
+
+    // Validate required fields
+    if (!spotId || !guestName || !plateNumber || !vehicleType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Spot ID, guest name, plate number, and vehicle type are required'
+      });
+    }
+
+    // Get spot details and lock it
+    let connection = null;
+    try {
+      if (!db.connection) {
+        await db.connect();
+      }
+      connection = await db.connection.getConnection();
+      await connection.beginTransaction();
+
+      // Lock the spot and check availability
+      const [lockedSpots] = await connection.execute(
+        `SELECT ps.parking_spot_id, ps.status, ps.spot_type, ps.spot_number, 
+         psec.parking_area_id, pa.parking_area_name, pa.location
+         FROM parking_spot ps
+         INNER JOIN parking_section psec ON ps.parking_section_id = psec.parking_section_id
+         INNER JOIN parking_area pa ON psec.parking_area_id = pa.parking_area_id
+         WHERE ps.parking_spot_id = ? FOR UPDATE`,
+        [spotId]
+      );
+
+      if (lockedSpots.length === 0) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Parking spot not found'
+        });
+      }
+
+      const spot = lockedSpots[0];
+
+      // Check if spot is available
+      if (spot.status !== 'available') {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: 'Parking spot is not available',
+          errorCode: 'SPOT_UNAVAILABLE'
+        });
+      }
+
+      // Validate vehicle type compatibility
+      let expectedSpotType = vehicleType.toLowerCase();
+      if (vehicleType.toLowerCase() === 'bicycle' || vehicleType.toLowerCase() === 'ebike') {
+        expectedSpotType = 'bike';
+      }
+
+      if (expectedSpotType !== spot.spot_type.toLowerCase()) {
+        await connection.rollback();
+        connection.release();
+        return res.status(400).json({
+          success: false,
+          message: `This parking spot is for ${spot.spot_type}s only. Selected vehicle type is ${vehicleType}.`,
+          errorCode: 'VEHICLE_TYPE_MISMATCH'
+        });
+      }
+
+      // Create guest user (temporary user with guest identifier)
+      const guestEmail = `guest_${Date.now()}_${Math.random().toString(36).substring(7)}@tappark.guest`;
+      const guestPassword = 'guest_temp_password'; // Temporary password, guest won't login
+      const hashedPassword = await bcrypt.hash(guestPassword, 12);
+      
+      const [guestUserResult] = await connection.execute(
+        `INSERT INTO users (email, password, first_name, last_name, user_type_id, hour_balance)
+         VALUES (?, ?, ?, ?, 1, 0)`,
+        [guestEmail, hashedPassword, guestName, 'Guest']
+      );
+
+      const guestUserId = guestUserResult.insertId;
+
+      // Create vehicle for guest (vehicles table doesn't have model column)
+      const [vehicleResult] = await connection.execute(
+        `INSERT INTO vehicles (user_id, plate_number, vehicle_type, brand, color)
+         VALUES (?, ?, ?, ?, ?)`,
+        [guestUserId, plateNumber, vehicleType, brand || null, color || null]
+      );
+
+      const vehicleId = vehicleResult.insertId;
+
+      // Update spot status to occupied (since attendant booking starts immediately)
+      await connection.execute(
+        'UPDATE parking_spot SET status = ? WHERE parking_spot_id = ? AND status = ?',
+        ['occupied', spotId, 'available']
+      );
+
+      // Create reservation with active status and start_time (since attendant booking starts immediately)
+      const [reservationResult] = await connection.execute(
+        `INSERT INTO reservations (user_id, vehicle_id, parking_spots_id, time_stamp, start_time, booking_status, QR)
+         VALUES (?, ?, ?, NOW(), NOW(), 'active', '')`,
+        [guestUserId, vehicleId, spotId]
+      );
+
+      const reservationId = reservationResult.insertId;
+
+      // Generate QR code data
+      const qrData = {
+        reservationId: reservationId,
+        userId: guestUserId,
+        vehicleId: vehicleId,
+        spotId: spotId,
+        areaId: spot.parking_area_id,
+        plateNumber: plateNumber,
+        parkingArea: spot.parking_area_name,
+        spotNumber: spot.spot_number,
+        isGuest: true,
+        guestName: guestName,
+        timestamp: Date.now()
+      };
+
+      // Generate QR code as data URL
+      const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // Update reservation with QR code
+      await connection.execute(
+        'UPDATE reservations SET QR = ? WHERE reservation_id = ?',
+        [qrCodeDataURL, reservationId]
+      );
+
+      await connection.commit();
+      connection.release();
+
+      // Log activity
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.OTHER,
+        `Admin created guest booking: ${guestName} - Spot ${spot.spot_number}`,
+        reservationId
+      );
+
+      res.json({
+        success: true,
+        message: 'Guest booking created successfully',
+        data: {
+          reservationId: reservationId,
+          qrCode: qrCodeDataURL,
+          bookingDetails: {
+            reservationId: reservationId,
+            qrCode: qrCodeDataURL,
+            guestName: guestName,
+            vehiclePlate: plateNumber,
+            vehicleType: vehicleType,
+            vehicleBrand: brand || 'N/A',
+            areaName: spot.parking_area_name,
+            areaLocation: spot.location,
+            spotNumber: spot.spot_number,
+            spotType: spot.spot_type,
+            status: 'active',
+            isGuest: true
+          }
+        }
+      });
+
+    } catch (error) {
+      if (connection) {
+        await connection.rollback();
+        connection.release();
+      }
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Create guest booking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create guest booking',
+      error: error.message
+    });
+  }
+});
+
+// Admin/Attendant: End parking session (for occupied spots)
+router.put('/end-parking-session/:reservationId', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin or attendant
+    const userCheck = await db.query(`
+      SELECT u.user_id, u.user_type_id, t.account_type_name
+      FROM users u
+      LEFT JOIN types t ON u.user_type_id = t.type_id
+      WHERE u.user_id = ?
+    `, [req.user.user_id]);
+
+    if (userCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const isAdminOrAttendant = userCheck[0].account_type_name === 'Admin' || 
+                               userCheck[0].account_type_name === 'Attendant' || 
+                               userCheck[0].user_type_id === 3 || 
+                               userCheck[0].user_type_id === 2;
+    
+    if (!isAdminOrAttendant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin or Attendant access required'
+      });
+    }
+
+    const { reservationId } = req.params;
+
+    // Get reservation details
+    const reservations = await db.query(`
+      SELECT 
+        r.reservation_id,
+        r.user_id,
+        r.parking_spots_id,
+        r.booking_status,
+        r.start_time
+      FROM reservations r
+      WHERE r.reservation_id = ? AND r.booking_status = 'active'
+    `, [reservationId]);
+
+    if (reservations.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Active parking session not found'
+      });
+    }
+
+    const reservation = reservations[0];
+
+    // Use transaction to update reservation and spot status
+    let connection = null;
+    try {
+      if (!db.connection) {
+        await db.connect();
+      }
+      connection = await db.connection.getConnection();
+      await connection.beginTransaction();
+
+      // Update reservation to completed
+      await connection.execute(
+        `UPDATE reservations 
+         SET booking_status = 'completed', end_time = NOW()
+         WHERE reservation_id = ? AND booking_status = 'active'`,
+        [reservationId]
+      );
+
+      // Update spot status to available
+      await connection.execute(
+        `UPDATE parking_spot 
+         SET status = 'available'
+         WHERE parking_spot_id = ?`,
+        [reservation.parking_spots_id]
+      );
+
+      await connection.commit();
+      connection.release();
+
+      // Log activity
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.OTHER,
+        `Admin/Attendant ended parking session for reservation ${reservationId}`,
+        reservationId
+      );
+
+      res.json({
+        success: true,
+        message: 'Parking session ended successfully',
+        data: {
+          reservationId: parseInt(reservationId),
+          status: 'completed',
+          spotFreed: true
+        }
+      });
+
+    } catch (error) {
+      if (connection) {
+        await connection.rollback();
+        connection.release();
+      }
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('End parking session error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to end parking session',
+      error: error.message
+    });
+  }
+});
+
+// Admin/Attendant: Cancel booking (for reserved spots)
+router.put('/cancel-booking/:reservationId', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin or attendant
+    const userCheck = await db.query(`
+      SELECT u.user_id, u.user_type_id, t.account_type_name
+      FROM users u
+      LEFT JOIN types t ON u.user_type_id = t.type_id
+      WHERE u.user_id = ?
+    `, [req.user.user_id]);
+
+    if (userCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const isAdminOrAttendant = userCheck[0].account_type_name === 'Admin' || 
+                               userCheck[0].account_type_name === 'Attendant' || 
+                               userCheck[0].user_type_id === 3 || 
+                               userCheck[0].user_type_id === 2;
+    
+    if (!isAdminOrAttendant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin or Attendant access required'
+      });
+    }
+
+    const { reservationId } = req.params;
+
+    // Get reservation details
+    const reservations = await db.query(`
+      SELECT 
+        r.reservation_id,
+        r.user_id,
+        r.parking_spots_id,
+        r.booking_status
+      FROM reservations r
+      WHERE r.reservation_id = ? AND r.booking_status = 'reserved'
+    `, [reservationId]);
+
+    if (reservations.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reserved booking not found'
+      });
+    }
+
+    const reservation = reservations[0];
+
+    // Use transaction to cancel reservation and free spot
+    let connection = null;
+    try {
+      if (!db.connection) {
+        await db.connect();
+      }
+      connection = await db.connection.getConnection();
+      await connection.beginTransaction();
+
+      // Update reservation to cancelled
+      await connection.execute(
+        `UPDATE reservations 
+         SET booking_status = 'cancelled'
+         WHERE reservation_id = ? AND booking_status = 'reserved'`,
+        [reservationId]
+      );
+
+      // Update spot status to available
+      await connection.execute(
+        `UPDATE parking_spot 
+         SET status = 'available'
+         WHERE parking_spot_id = ?`,
+        [reservation.parking_spots_id]
+      );
+
+      await connection.commit();
+      connection.release();
+
+      // Log activity
+      await logUserActivity(
+        req.user.user_id,
+        ActionTypes.OTHER,
+        `Admin/Attendant cancelled booking for reservation ${reservationId}`,
+        reservationId
+      );
+
+      res.json({
+        success: true,
+        message: 'Booking cancelled successfully',
+        data: {
+          reservationId: parseInt(reservationId),
+          status: 'cancelled',
+          spotFreed: true
+        }
+      });
+
+    } catch (error) {
+      if (connection) {
+        await connection.rollback();
+        connection.release();
+      }
+      throw error;
+    }
+
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel booking',
       error: error.message
     });
   }

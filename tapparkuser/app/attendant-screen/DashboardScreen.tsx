@@ -86,6 +86,18 @@ const DashboardScreen: React.FC = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationAlerts, setNotificationAlerts] = useState(true);
   
+  // Guest booking modal state
+  const [showGuestBookingModal, setShowGuestBookingModal] = useState(false);
+  const [guestBookingData, setGuestBookingData] = useState({
+    guestName: '',
+    plateNumber: '',
+    vehicleType: 'car',
+    brand: '',
+    model: '',
+    color: ''
+  });
+  const [isCreatingGuestBooking, setIsCreatingGuestBooking] = useState(false);
+  
   // Settings modal backend data state
   const [attendantProfile, setAttendantProfile] = useState<any>(null);
   const [notificationSettings, setNotificationSettings] = useState<any>(null);
@@ -194,27 +206,46 @@ const DashboardScreen: React.FC = () => {
   };
 
   const handleSlotPress = async (slot: ParkingSlot) => {
-    setSelectedSlot(slot);
-    setModalVisible(true);
-    setLoadingSlotDetails(true);
+    // Check if user is admin/attendant and spot is available
+    const isAdminOrAttendant = user?.account_type_name === 'Admin' || user?.account_type_name === 'Attendant' || user?.type_id === 3 || user?.type_id === 2;
     
-    try {
-      console.log('🔄 Fetching slot details for:', slot.slotId);
-      const response = await ApiService.getParkingSlotDetails(slot.id);
-      console.log('📊 Slot details response:', response);
+    if (isAdminOrAttendant && slot.status === 'available') {
+      // Show guest booking form for admin on available spots
+      setSelectedSlot(slot);
+      setShowGuestBookingModal(true);
+      // Reset form
+      setGuestBookingData({
+        guestName: '',
+        plateNumber: '',
+        vehicleType: slot.vehicleType || 'car',
+        brand: '',
+        model: '',
+        color: ''
+      });
+    } else {
+      // Show regular slot details modal
+      setSelectedSlot(slot);
+      setModalVisible(true);
+      setLoadingSlotDetails(true);
       
-      if (response.success) {
-        setSlotDetails(response.data.slotDetails);
-        console.log('✅ Slot details loaded:', response.data.slotDetails);
-      } else {
-        console.log('❌ Failed to load slot details:', response);
+      try {
+        console.log('🔄 Fetching slot details for:', slot.slotId);
+        const response = await ApiService.getParkingSlotDetails(slot.id);
+        console.log('📊 Slot details response:', response);
+        
+        if (response.success) {
+          setSlotDetails(response.data.slotDetails);
+          console.log('✅ Slot details loaded:', response.data.slotDetails);
+        } else {
+          console.log('❌ Failed to load slot details:', response);
+          setSlotDetails(null);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching slot details:', error);
         setSlotDetails(null);
+      } finally {
+        setLoadingSlotDetails(false);
       }
-    } catch (error) {
-      console.error('❌ Error fetching slot details:', error);
-      setSlotDetails(null);
-    } finally {
-      setLoadingSlotDetails(false);
     }
   };
 
@@ -223,6 +254,150 @@ const DashboardScreen: React.FC = () => {
     setSelectedSlot(null);
     setSlotDetails(null);
     setLoadingSlotDetails(false);
+  };
+
+  const closeGuestBookingModal = () => {
+    setShowGuestBookingModal(false);
+    setSelectedSlot(null);
+    setGuestBookingData({
+      guestName: '',
+      plateNumber: '',
+      vehicleType: 'car',
+      brand: '',
+      model: '',
+      color: ''
+    });
+  };
+
+  const handleEndParkingSession = async (reservationId: number) => {
+    Alert.alert(
+      'End Parking Session',
+      'Are you sure you want to end this parking session?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'End Session',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await ApiService.endParkingSessionByAdmin(reservationId);
+              if (response.success) {
+                Alert.alert('Success', 'Parking session ended successfully', [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      closeModal();
+                      fetchParkingSlots();
+                    }
+                  }
+                ]);
+              } else {
+                Alert.alert('Error', response.message || 'Failed to end parking session');
+              }
+            } catch (error: any) {
+              console.error('Error ending parking session:', error);
+              Alert.alert('Error', error.message || 'Failed to end parking session');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCancelBooking = async (reservationId: number) => {
+    Alert.alert(
+      'Cancel Booking',
+      'Are you sure you want to cancel this booking?',
+      [
+        {
+          text: 'No',
+          style: 'cancel'
+        },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await ApiService.cancelBookingByAdmin(reservationId);
+              if (response.success) {
+                Alert.alert('Success', 'Booking cancelled successfully', [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      closeModal();
+                      fetchParkingSlots();
+                    }
+                  }
+                ]);
+              } else {
+                Alert.alert('Error', response.message || 'Failed to cancel booking');
+              }
+            } catch (error: any) {
+              console.error('Error canceling booking:', error);
+              Alert.alert('Error', error.message || 'Failed to cancel booking');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCreateGuestBooking = async () => {
+    if (!selectedSlot) return;
+
+    // Validate required fields
+    if (!guestBookingData.guestName.trim()) {
+      Alert.alert('Validation Error', 'Please enter guest name');
+      return;
+    }
+    if (!guestBookingData.plateNumber.trim()) {
+      Alert.alert('Validation Error', 'Please enter plate number');
+      return;
+    }
+    if (!guestBookingData.vehicleType) {
+      Alert.alert('Validation Error', 'Please select vehicle type');
+      return;
+    }
+
+    setIsCreatingGuestBooking(true);
+    try {
+      const response = await ApiService.createGuestBooking({
+        spotId: parseInt(selectedSlot.id),
+        guestName: guestBookingData.guestName.trim(),
+        plateNumber: guestBookingData.plateNumber.trim(),
+        vehicleType: guestBookingData.vehicleType,
+        brand: guestBookingData.brand.trim() || undefined,
+        model: guestBookingData.model.trim() || undefined,
+        color: guestBookingData.color.trim() || undefined
+      });
+
+      if (response.success) {
+        Alert.alert(
+          'Success',
+          `Guest booking created successfully for ${guestBookingData.guestName} at spot ${selectedSlot.slotId}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                closeGuestBookingModal();
+                // Refresh parking slots
+                fetchParkingSlots();
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', response.message || 'Failed to create guest booking');
+      }
+    } catch (error: any) {
+      console.error('Error creating guest booking:', error);
+      Alert.alert('Error', error.message || 'Failed to create guest booking');
+    } finally {
+      setIsCreatingGuestBooking(false);
+    }
   };
 
   const handleNotificationToggle = async (newValue: boolean) => {
@@ -1296,6 +1471,39 @@ const DashboardScreen: React.FC = () => {
               </View>
             ) : (
               <View style={styles.slotDetailsContent}>
+                {/* Show reserved/occupied user information FIRST */}
+                {(slotDetails?.status === 'reserved' || slotDetails?.status === 'occupied' || selectedSlot?.status === 'reserved' || selectedSlot?.status === 'occupied') && (
+                  <View style={[styles.slotDetailsColumn, { marginBottom: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' }]}>
+                    <Text style={[styles.slotDetailLabel, { marginBottom: 12, fontWeight: 'bold', fontSize: 16 }]}>
+                      {(slotDetails?.status || selectedSlot?.status) === 'reserved' ? 'Reserved By:' : 'Occupied By:'}
+                    </Text>
+                    {slotDetails?.reservedBy && (
+                      <View style={styles.slotDetailRow}>
+                        <Text style={styles.slotDetailLabel}>Name:</Text>
+                        <Text style={styles.slotDetailValue}>
+                          {slotDetails.reservedBy}
+                        </Text>
+                      </View>
+                    )}
+                    {slotDetails?.reservedPlateNumber && (
+                      <View style={styles.slotDetailRow}>
+                        <Text style={styles.slotDetailLabel}>Plate Number:</Text>
+                        <Text style={styles.slotDetailValue}>
+                          {slotDetails.reservedPlateNumber}
+                        </Text>
+                      </View>
+                    )}
+                    {slotDetails?.reservedByEmail && (
+                      <View style={styles.slotDetailRow}>
+                        <Text style={styles.slotDetailLabel}>Email:</Text>
+                        <Text style={[styles.slotDetailValue, { fontSize: 12 }]}>
+                          {slotDetails.reservedByEmail}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+                
                 <View style={styles.slotDetailsColumn}>
                   <View style={styles.slotDetailRow}>
                     <Text style={styles.slotDetailLabel}>Slot ID:</Text>
@@ -1304,24 +1512,24 @@ const DashboardScreen: React.FC = () => {
                     </Text>
                   </View>
                   <View style={styles.slotDetailRow}>
-                    <Text style={styles.slotDetailLabel}>Vehicle Type:</Text>
+                    <Text style={styles.slotDetailLabel}>Section:</Text>
                     <Text style={styles.slotDetailValue}>
-                      {slotDetails?.vehicleType || selectedSlot?.vehicleType || 'N/A'}
+                      {slotDetails?.section || selectedSlot?.section || 'N/A'}
                     </Text>
                   </View>
                   <View style={styles.slotDetailRow}>
-                    <Text style={styles.slotDetailLabel}>Status:</Text>
-                    <Text style={[styles.slotDetailValue, { color: getStatusColor(slotDetails?.status || selectedSlot?.status || '') }]}>
-                      {getStatusText(slotDetails?.status || selectedSlot?.status || '')}
+                    <Text style={styles.slotDetailLabel}>Vehicle Type:</Text>
+                    <Text style={styles.slotDetailValue}>
+                      {slotDetails?.vehicleType || selectedSlot?.vehicleType || 'N/A'}
                     </Text>
                   </View>
                 </View>
                 
                 <View style={styles.slotDetailsColumn}>
                   <View style={styles.slotDetailRow}>
-                    <Text style={styles.slotDetailLabel}>Section:</Text>
-                    <Text style={styles.slotDetailValue}>
-                      {slotDetails?.section || selectedSlot?.section || 'N/A'}
+                    <Text style={styles.slotDetailLabel}>Status:</Text>
+                    <Text style={[styles.slotDetailValue, { color: getStatusColor(slotDetails?.status || selectedSlot?.status || '') }]}>
+                      {getStatusText(slotDetails?.status || selectedSlot?.status || '')}
                     </Text>
                   </View>
                   <View style={styles.slotDetailRow}>
@@ -1340,9 +1548,222 @@ const DashboardScreen: React.FC = () => {
               </View>
             )}
             
+            {/* Show admin action buttons for reserved/occupied spots */}
+            {(() => {
+              const isAdminOrAttendant = user?.account_type_name === 'Admin' || user?.account_type_name === 'Attendant' || user?.type_id === 3 || user?.type_id === 2;
+              const currentStatus = (slotDetails?.status || selectedSlot?.status || '').toLowerCase();
+              const isReserved = currentStatus === 'reserved';
+              const isOccupied = currentStatus === 'occupied';
+              const reservationId = slotDetails?.reservationId;
+              // Check if there's reservation data (user info or reservationId)
+              const hasReservationData = slotDetails?.reservedBy || slotDetails?.reservedPlateNumber || reservationId;
+              
+              // Debug logging
+              if (!loadingSlotDetails && (isReserved || isOccupied)) {
+                console.log('🔍 Admin action button check:', {
+                  isAdminOrAttendant,
+                  currentStatus,
+                  isReserved,
+                  isOccupied,
+                  reservationId,
+                  hasReservationData,
+                  reservedBy: slotDetails?.reservedBy,
+                  reservedPlateNumber: slotDetails?.reservedPlateNumber,
+                  slotDetailsStatus: slotDetails?.status,
+                  selectedSlotStatus: selectedSlot?.status
+                });
+              }
+              
+              // Show button only if there's reservation data (meaning there's an actual reservation to cancel/end)
+              if (isAdminOrAttendant && !loadingSlotDetails && (isReserved || isOccupied) && hasReservationData && reservationId) {
+                return (
+                  <TouchableOpacity 
+                    style={[styles.goBackButton, { 
+                      backgroundColor: isOccupied ? '#FF6B6B' : '#FF9800', 
+                      marginBottom: 12 
+                    }]} 
+                    onPress={() => {
+                      if (isOccupied) {
+                        handleEndParkingSession(reservationId);
+                      } else if (isReserved) {
+                        handleCancelBooking(reservationId);
+                      }
+                    }}
+                  >
+                    <Text style={[styles.goBackButtonText, { color: '#fff' }]}>
+                      {isOccupied ? 'End Parking' : 'Cancel Booking'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+              return null;
+            })()}
+            
+            {/* Show Book button for admin/attendant on available spots - Show even when loading */}
+            {(() => {
+              // Allow both Admin and Attendant to book for guests
+              const isAdminOrAttendant = user?.account_type_name === 'Admin' || user?.account_type_name === 'Attendant' || user?.type_id === 3 || user?.type_id === 2;
+              // Check status from both slotDetails and selectedSlot, handle case-insensitive
+              const statusFromDetails = slotDetails?.status?.toLowerCase() || '';
+              const statusFromSlot = selectedSlot?.status?.toLowerCase() || '';
+              const currentStatus = statusFromDetails || statusFromSlot;
+              const isAvailable = currentStatus === 'available';
+              
+              // Debug logging
+              if (!loadingSlotDetails) {
+                console.log('🔍 Book button check:', {
+                  isAdminOrAttendant,
+                  currentStatus,
+                  isAvailable,
+                  slotDetailsStatus: slotDetails?.status,
+                  selectedSlotStatus: selectedSlot?.status,
+                  userAccountType: user?.account_type_name,
+                  userTypeId: user?.type_id,
+                  user: user
+                });
+              }
+              
+              if (isAdminOrAttendant && isAvailable && !loadingSlotDetails) {
+                return (
+                  <TouchableOpacity 
+                    style={[styles.goBackButton, { backgroundColor: '#007AFF', marginBottom: 12 }]} 
+                    onPress={() => {
+                      closeModal();
+                      setShowGuestBookingModal(true);
+                      // Reset form with slot's vehicle type
+                      setGuestBookingData({
+                        guestName: '',
+                        plateNumber: '',
+                        vehicleType: slotDetails?.vehicleType || selectedSlot?.vehicleType || 'car',
+                        brand: '',
+                        model: '',
+                        color: ''
+                      });
+                    }}
+                  >
+                    <Text style={[styles.goBackButtonText, { color: '#fff' }]}>Book for Guest</Text>
+                  </TouchableOpacity>
+                );
+              }
+              return null;
+            })()}
+            
             <TouchableOpacity style={styles.goBackButton} onPress={closeModal}>
               <Text style={styles.goBackButtonText}>Go-back</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Guest Booking Modal */}
+      <Modal
+        visible={showGuestBookingModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closeGuestBookingModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.slotDetailsModal, { maxHeight: '80%', flex: 0 }]}>
+            <Text style={styles.slotDetailsTitle}>
+              Create Guest Booking - {selectedSlot?.slotId}
+            </Text>
+            
+            <ScrollView 
+              style={{ maxHeight: 400 }} 
+              contentContainerStyle={{ paddingBottom: 10 }}
+              showsVerticalScrollIndicator={true}
+            >
+              <View style={{ marginBottom: 20 }}>
+                <Text style={[styles.slotDetailLabel, { marginBottom: 8 }]}>Guest Name *</Text>
+                <TextInput
+                  style={[styles.input, { marginBottom: 16 }]}
+                  placeholder="Enter guest name"
+                  placeholderTextColor="#999"
+                  value={guestBookingData.guestName}
+                  onChangeText={(text) => setGuestBookingData({ ...guestBookingData, guestName: text })}
+                />
+
+                <Text style={[styles.slotDetailLabel, { marginBottom: 8 }]}>Plate Number *</Text>
+                <TextInput
+                  style={[styles.input, { marginBottom: 16 }]}
+                  placeholder="Enter plate number"
+                  placeholderTextColor="#999"
+                  value={guestBookingData.plateNumber}
+                  onChangeText={(text) => setGuestBookingData({ ...guestBookingData, plateNumber: text })}
+                  autoCapitalize="characters"
+                />
+
+                <Text style={[styles.slotDetailLabel, { marginBottom: 8 }]}>Vehicle Type *</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
+                  {['car', 'motorcycle', 'bike'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        {
+                          padding: 10,
+                          margin: 5,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: '#ccc',
+                          backgroundColor: guestBookingData.vehicleType === type ? '#007AFF' : '#fff',
+                        }
+                      ]}
+                      onPress={() => setGuestBookingData({ ...guestBookingData, vehicleType: type })}
+                    >
+                      <Text style={{ color: guestBookingData.vehicleType === type ? '#fff' : '#000' }}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[styles.slotDetailLabel, { marginBottom: 8 }]}>Brand (Optional)</Text>
+                <TextInput
+                  style={[styles.input, { marginBottom: 16 }]}
+                  placeholder="Enter vehicle brand"
+                  placeholderTextColor="#999"
+                  value={guestBookingData.brand}
+                  onChangeText={(text) => setGuestBookingData({ ...guestBookingData, brand: text })}
+                />
+
+                <Text style={[styles.slotDetailLabel, { marginBottom: 8 }]}>Model (Optional)</Text>
+                <TextInput
+                  style={[styles.input, { marginBottom: 16 }]}
+                  placeholder="Enter vehicle model"
+                  placeholderTextColor="#999"
+                  value={guestBookingData.model}
+                  onChangeText={(text) => setGuestBookingData({ ...guestBookingData, model: text })}
+                />
+
+                <Text style={[styles.slotDetailLabel, { marginBottom: 8 }]}>Color (Optional)</Text>
+                <TextInput
+                  style={[styles.input, { marginBottom: 16 }]}
+                  placeholder="Enter vehicle color"
+                  placeholderTextColor="#999"
+                  value={guestBookingData.color}
+                  onChangeText={(text) => setGuestBookingData({ ...guestBookingData, color: text })}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+              <TouchableOpacity 
+                style={[styles.goBackButton, { flex: 0.48, backgroundColor: '#ccc' }]} 
+                onPress={closeGuestBookingModal}
+                disabled={isCreatingGuestBooking}
+              >
+                <Text style={styles.goBackButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.goBackButton, { flex: 0.48, backgroundColor: '#007AFF' }]} 
+                onPress={handleCreateGuestBooking}
+                disabled={isCreatingGuestBooking}
+              >
+                <Text style={[styles.goBackButtonText, { color: '#fff' }]}>
+                  {isCreatingGuestBooking ? 'Creating...' : 'Create Booking'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

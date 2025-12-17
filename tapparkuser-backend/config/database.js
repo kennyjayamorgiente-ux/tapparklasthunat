@@ -5,10 +5,10 @@ class Database {
   constructor() {
     this.connection = null;
     this.config = {
-      host: process.env.DB_HOST || 'localhost',
+      host: process.env.DB_HOST || '10.237.135.232',
       port: process.env.DB_PORT || 3306,
-      user: process.env.DB_USER || 'root',
-      password: '',
+      user: process.env.DB_USER || 'remoteuser',
+      password: '12345678',
       database: process.env.DB_NAME || 'finaltappark', // Use environment variable for database name
       waitForConnections: true,
       connectionLimit: 5,

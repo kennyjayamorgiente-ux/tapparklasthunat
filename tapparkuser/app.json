@@ -9,9 +9,37 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tapparkuser.app",
+      "buildNumber": "1",
+      "deploymentTarget": "11.0",
+      "requireFullScreen": false,
+      "infoPlist": {
+        "UIRequiresFullScreen": false,
+        "UIViewControllerBasedStatusBarAppearance": true,
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ],
+        "UIApplicationSceneManifest": {
+          "UIApplicationSupportsMultipleScenes": true
+        },
+        "UIApplicationSupportsIndirectInputEvents": true,
+        "LSRequiresIPhoneOS": false,
+        "UIDeviceFamily": [
+          1,
+          2
+        ]
+      }
     },
     "android": {
+      "package": "com.tapparkuser.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,8 +47,19 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "softwareKeyboardLayoutMode": "pan",
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "edgeToEdgeEnabled": false,
+      "predictiveBackGestureEnabled": false,
+      "minSdkVersion": 19,
+      "targetSdkVersion": 34,
+      "compileSdkVersion": 34,
+      "resizeableActivity": true,
+      "supportsTablet": true,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "screenOrientation": "portrait"
     },
     "web": {
       "output": "static",

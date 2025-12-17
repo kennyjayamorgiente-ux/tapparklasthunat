@@ -101,7 +101,34 @@ in the TapPark application, covering both User and Attendant interfaces.
    - Vehicle selection modal with compatibility filtering
    - Booking confirmation modal
    - Vehicle type mismatch error handling
-   - Navigation to ActiveParkingScreen after successful booking
+   - Pre-booking status checks for occupied/reserved spots
+   - User-friendly alerts for unavailable spots
+   - Smooth animated navigation to ActiveParkingScreen after successful booking
+   
+   SEE ALL SPOTS MODAL:
+   - Scrollable list of all parking spots in selected area
+   - Color-coded spot cards by status:
+     * Green: Available
+     * Red: Occupied
+     * Yellow/Orange: Reserved
+     * Gray: Unknown
+   - Displays spot number, type, and status
+   - Area selection dropdown
+   - Fetches all spots regardless of status
+   
+   PARKING LAYOUT MODAL:
+   - Interactive SVG parking layout visualization
+   - Tap parking area card to view layout
+   - Color-coded spot overlays:
+     * Green: Available
+     * Red: Occupied
+     * Yellow/Orange: Reserved (by other users)
+     * Blue: User's booked spot
+     * Gray: Unknown
+   - Tap spot overlay to view spot details (status, type, section)
+   - Responsive touchable overlays matching SVG spot positions
+   - Zoom and scroll support
+   - Spot status fetched in real-time
 
 1.7 ACTIVE PARKING SCREEN (ActiveParkingScreen)
    - Three-tab interface: Parking Ticket, Parking Layout, Parking Time
@@ -123,11 +150,17 @@ in the TapPark application, covering both User and Attendant interfaces.
    - Interactive SVG parking layout visualization
    - Pinch-to-zoom functionality
    - Pan and scroll support
-   - Clickable parking spots
-   - Highlights user's reserved spot
+   - Responsive touchable overlays on parking spots
+   - Color-coded spot status indicators:
+     * Green: Available
+     * Red: Occupied
+     * Yellow: Reserved (by other users)
+     * Blue: User's booked spot
    - Spot details modal on tap
    - Refresh button to reload layout
    - Empty state if no layout available
+   - Supports nested SVG groups (floors, sections)
+   - Dynamic parsing for admin-added sections
    
    PARKING TIME TAB:
    - Circular timer display
@@ -148,10 +181,13 @@ in the TapPark application, covering both User and Attendant interfaces.
    - Timer syncs with backend start time
    - Session end detection
    - Parking end modal with:
-     * Duration
-     * Charge amount (hours deducted)
-     * Remaining balance
+     * Duration (HH:MM:SS format)
+     * Hours deducted (HH.MM format, e.g., 1.30 for 1 hour 30 minutes)
+     * Remaining balance (HH.MM format)
+     * Penalty notice (if user exceeded balance)
      * Parking area and spot details
+   - Penalty system: If parking duration exceeds available balance, excess hours are recorded as penalty
+   - Penalty will be deducted from next subscription plan
    - Automatic navigation to HomeScreen after session ends
 
 1.8 PROFILE SCREEN (ProfileScreen)
@@ -178,13 +214,15 @@ in the TapPark application, covering both User and Attendant interfaces.
      * Parking area name
      * Spot number and type
      * Location address
-     * Status (Available/Occupied)
+     * Status (Available/Occupied/Reserved)
    - "BOOK" button for quick booking
    - Remove from favorites (trash icon)
    - Empty state if no favorites
    - Vehicle selection modal for booking
    - Vehicle type compatibility checking
-   - Navigation to ActiveParkingScreen after booking
+   - Pre-booking status checks for occupied/reserved spots
+   - User-friendly alerts for unavailable spots
+   - Smooth animated navigation to ActiveParkingScreen after booking
 
 1.10 HISTORY SCREEN (HistoryScreen)
    - Parking session history
@@ -193,15 +231,18 @@ in the TapPark application, covering both User and Attendant interfaces.
      * Location name
      * Scan timestamps (Start/End)
      * Duration
-     * Hours deducted
+     * Hours deducted (HH.MM format, e.g., 1.30 for 1 hour 30 minutes)
      * Vehicle information (Type, Brand, Plate Number)
      * Spot number and type
      * Booking date
      * Status (Completed/Active/Reserved)
    - "Add to Favorites" button (heart icon)
    - "BOOK AGAIN" button for rebooking same spot
+   - Pre-booking status checks before rebooking
+   - User-friendly alerts for occupied/reserved spots
    - Tap card to view detailed reservation information
-   - Reservation details modal with full information
+   - Reservation details modal with full information (including hours deducted in HH.MM format)
+   - Smooth animated navigation to ActiveParkingScreen after booking
    - Pagination support
    - Empty state if no history
 
@@ -209,11 +250,11 @@ in the TapPark application, covering both User and Attendant interfaces.
    - User profile display
    - Debit card-style balance display
    - Student ID display
-   - Total hours remaining display
+   - Total hours remaining display (HH.MM format, e.g., 83.30 = 83 hours 30 minutes)
    - "+ ADD HOURS" button (navigates to TopUpScreen)
    - Transaction history:
      * Transaction type (Subscription purchase / Parking session)
-     * Amount (hours added or deducted)
+     * Amount (hours added or deducted in HH.MM format)
      * Plan name (for subscriptions)
      * Date and time
      * Transaction icons
@@ -221,11 +262,11 @@ in the TapPark application, covering both User and Attendant interfaces.
    - Transaction details modal with:
      * Transaction type
      * Plan name (if applicable)
-     * Amount
+     * Amount (in HH.MM format)
      * Date
      * Status
      * Transaction ID
-     * Additional details (location, spot, hours used, etc.)
+     * Additional details (location, spot, hours used in HH.MM format, etc.)
    - Empty state if no transactions
 
 1.12 TOP UP SCREEN (TopUpScreen)
@@ -355,6 +396,24 @@ in the TapPark application, covering both User and Attendant interfaces.
      * Section
      * Parking Area
      * Address
+     * Reserved By / Occupied By (name and plate number, if applicable)
+   - Guest booking for admins/attendants:
+     * "Book for Guest" button on available spots
+     * Guest booking modal with fields:
+       - Guest Name (required)
+       - Plate Number (required)
+       - Vehicle Type (required)
+       - Brand (optional)
+       - Model (optional)
+       - Color (optional)
+     * Creates temporary guest user account
+     * Booking starts immediately (occupied status, start_time recorded)
+     * QR code generated for guest booking
+   - Admin/Attendant parking management:
+     * "End Parking" button (red) for occupied spots
+     * "Cancel Booking" button (orange) for reserved spots
+     * Buttons visible in slot details modal for admins/attendants
+     * Direct session management without QR scanning
    - Real-time polling (every 10 seconds) for status updates
    - Smooth animations for status changes
    - Status legend
@@ -414,6 +473,29 @@ in the TapPark application, covering both User and Attendant interfaces.
    - Success/error alerts
    - Auto-stop scanning after 10 seconds
    - Close button to return to dashboard
+
+2.3 ADMIN/ATTENDANT PARKING MANAGEMENT
+   - Direct parking session management from dashboard
+   - Available in slot details modal for admins/attendants
+   - Features:
+     * End Parking Session:
+       - Available for occupied spots
+       - Calculates duration and deducts hours (HH.MM format)
+       - Applies penalty system if balance exceeded
+       - Updates spot status to available
+       - Records session completion
+     * Cancel Booking:
+       - Available for reserved spots
+       - Cancels reservation without hour deduction
+       - Updates spot status to available
+       - Removes reservation record
+     * Guest Booking:
+       - Create bookings for temporary users (guests)
+       - Guest user account automatically created
+       - Vehicle registration for guest
+       - Booking starts immediately (occupied status)
+       - QR code generated for guest booking
+       - Guest bookings tracked in system
 
 ================================================================================
               3. AUTHENTICATION & ACCOUNT MANAGEMENT
@@ -511,15 +593,20 @@ in the TapPark application, covering both User and Attendant interfaces.
    - Select vehicle
    - Select parking area
    - Automatic spot assignment
+   - Pre-booking status checks (prevents booking occupied/reserved spots)
    - Booking confirmation
    - QR code generation
    - Reservation creation
    - Prevents multiple active bookings
    - Vehicle type compatibility validation
+   - User-friendly alerts for unavailable spots
+   - Smooth animated navigation after successful booking
    - Error handling for:
      * No available spots
      * Vehicle type mismatch
      * Already have active booking
+     * Spot occupied (with alert)
+     * Spot reserved (with alert)
 
 5.4 ACTIVE PARKING SESSION
    - Real-time session tracking
@@ -534,24 +621,38 @@ in the TapPark application, covering both User and Attendant interfaces.
 5.5 PARKING LAYOUT
    - SVG-based parking layout visualization
    - Interactive zoom and pan
-   - Clickable parking spots
-   - User's spot highlighting
+   - Responsive touchable overlays on parking spots
+   - Color-coded spot status:
+     * Green: Available
+     * Red: Occupied
+     * Yellow: Reserved (by other users)
+     * Blue: User's booked spot
+   - Clickable parking spots with full area coverage
+   - User's spot highlighting (blue color)
    - Spot details on tap
    - Layout refresh functionality
+   - Supports nested SVG groups (floors, sections)
+   - Dynamic parsing for admin-added sections
+   - Consistent parsing logic across HomeScreen and ActiveParkingScreen
 
 5.6 FREQUENT SPOTS
    - Tracks frequently used parking spots
    - Displays usage count
    - Quick booking from frequent spots
    - Location and spot information
-   - Availability status
+   - Availability status (Available/Occupied/Reserved)
+   - Pre-booking status checks
+   - User-friendly alerts for occupied/reserved spots
 
 5.7 FAVORITES
    - Save favorite parking spots
    - Quick access to favorite spots
    - Book from favorites
+   - Pre-booking status checks
+   - User-friendly alerts for occupied/reserved spots
    - Remove from favorites
    - Favorite spot information display
+   - Status display (Available/Occupied/Reserved)
 
 5.8 PARKING HISTORY
    - Complete parking session history
@@ -560,13 +661,15 @@ in the TapPark application, covering both User and Attendant interfaces.
      * Location
      * Start/End times
      * Duration
-     * Hours deducted
+     * Hours deducted (HH.MM format)
      * Vehicle information
      * Spot information
      * Status
    - Rebook from history
+   - Pre-booking status checks before rebooking
+   - User-friendly alerts for occupied/reserved spots
    - Add to favorites from history
-   - Detailed reservation view
+   - Detailed reservation view (with hours deducted in HH.MM format)
    - Pagination support
 
 ================================================================================
@@ -604,19 +707,32 @@ in the TapPark application, covering both User and Attendant interfaces.
      * Parking sessions (hours deducted)
    - Transaction details:
      * Type
-     * Amount (hours)
+     * Amount (hours in HH.MM format)
      * Date and time
      * Status
      * Transaction ID
-     * Additional details
+     * Additional details (hours used in HH.MM format)
    - Transaction filtering
    - Pagination support
+   - Hours displayed in HH.MM format (e.g., 1.30 = 1 hour 30 minutes)
 
 6.5 HOUR DEDUCTION
    - Automatic hour deduction on parking session end
-   - Hour-based charging (rounded up to hours)
+   - Minute-precise deduction (HH.MM format, e.g., 1.30 for 1 hour 30 minutes)
+   - Minimum 1 minute deduction for any parking session (even seconds)
    - Balance update after deduction
    - Transaction recording
+   - Display format: Hours and minutes (e.g., 83.30 = 83 hours 30 minutes)
+   
+6.6 PENALTY SYSTEM
+   - Detects when parking duration exceeds available subscription balance
+   - Calculates penalty hours (excess duration beyond balance)
+   - Records penalty in database for deduction from next subscription plan
+   - Displays penalty notice in parking end modal (shows hours and minutes exceeded)
+   - Applies regardless of remaining balance amount
+   - Deducts only available hours from current subscription
+   - Excess hours recorded as penalty for next subscription
+   - Example: User has 1.00 hour, parks for 2.00 hours → 1.00 hour deducted, 1.00 hour penalty recorded
 
 ================================================================================
                      7. ADDITIONAL FEATURES
@@ -771,10 +887,29 @@ in the TapPark application, covering both User and Attendant interfaces.
 9.4 ATTENDANT FLOW
    1. Login as Attendant
    2. Dashboard Screen (view parking slots)
-   3. QR Scanner Screen (scan user QR codes)
-   4. Start/End parking sessions
-   5. View activity history
-   6. Manage settings
+   3. Options:
+      a. QR Scanner Screen (scan user QR codes to start/end sessions)
+      b. Direct Management (tap slot -> End Parking/Cancel Booking)
+      c. Guest Booking (tap available slot -> Book for Guest)
+   4. View activity history
+   5. Manage settings
+
+9.5 GUEST BOOKING FLOW (Admin/Attendant)
+   1. Admin/Attendant taps available parking spot
+   2. Guest booking modal opens
+   3. Fill in guest information:
+      * Guest Name (required)
+      * Plate Number (required)
+      * Vehicle Type (required)
+      * Brand, Model, Color (optional)
+   4. Submit booking
+   5. System creates:
+      * Temporary guest user account
+      * Vehicle record for guest
+      * Reservation (status: active, start_time: NOW())
+   6. Spot status changes to occupied
+   7. QR code generated for guest booking
+   8. Booking confirmation displayed
 
 ================================================================================
                         KEY FEATURES SUMMARY
@@ -795,12 +930,15 @@ USER FEATURES:
 ATTENDANT FEATURES:
 ✓ Parking slot dashboard with real-time updates
 ✓ QR code scanning for start/end sessions
+✓ Direct parking session management (End Parking/Cancel Booking)
+✓ Guest booking functionality for temporary users
 ✓ Activity history tracking
 ✓ Notification settings
 ✓ Profile management
 ✓ Grid and list view modes
 ✓ Vehicle type filtering
 ✓ Slot status monitoring
+✓ Occupant information display (name and plate number)
 
 ================================================================================
                         END OF DOCUMENTATION
